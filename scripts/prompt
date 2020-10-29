@@ -3,4 +3,4 @@
 #Returns after a single char is entered without hitting return.
 read -p "${1} ${yellow}y/n${reset} " -n 1 -r
 echo
-[[ $REPLY =~ ^[Yy]$ ]] && return 0 || return 1
+[[ $REPLY =~ ^[Yy]$ ]] && exit 0 || exit 1
