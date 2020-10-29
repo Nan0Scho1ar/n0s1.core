@@ -1,12 +1,12 @@
 # n0s1.core
 
-## Several suckless shell scripts and other core features.
+### Several suckless shell scripts and other core features.
 
-### Shell
+## Shell
 
-#### FZY
-##### FZY_Lite
+### FZY
+#### FZY_Lite
 
-#### TOML
+### TOML
 
-#### BISH
+### BISH
