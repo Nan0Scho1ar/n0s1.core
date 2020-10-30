@@ -10,5 +10,5 @@ fzy_lite() {
     [[ $char = "\n" ]] && echo -e "\e[?1049l$filtered" && return 0
     [[ $char = "177" ]] && [[ $str = "" ]] && echo -e "\e[?1049l" && return 1
     [[ $char = "177" ]] && str="${str::-1}" || str="$str$REPLY";
-    yes '' | sed "$(tput cols)q"; done
+    yes '' | sed "$(tput lines)q"; done
 }
