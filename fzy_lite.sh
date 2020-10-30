@@ -4,7 +4,7 @@
 
 fzy_lite() {
     str=""; in="$(< /dev/stdin)"; echo -e "\e[?1049h"; while true; do
-    [[ $str = "" ]] && echo "$in" || echo "$in" | grep ".*$(echo "$str" | sed "s/\(.\)/\1.*/g")"
+    echo "$in" | grep ".*$(echo "$str" | sed "s/\(.\)/\1.*/g")"
     read -p "> $str" -n 1 -s < /dev/tty;
     if [[ $(echo "$REPLY" | od) = $(echo -e "0000000 005177\n0000002\n") ]]; then
     [[ $str = "" ]] && echo -e "\e[?1049l" && return 1 || str="${str::-1}"
