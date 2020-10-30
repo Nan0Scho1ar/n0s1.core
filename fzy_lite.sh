@@ -1,5 +1,5 @@
 #!/bin/sh
-# FZY_Lite: 10 SLOC Command Line Fuzzy Finder
+# FZY_Lite: 10 SLOC Command Line Fuzzy Finder.
 # Copyright: Nan0Scho1ar (Christopher Mackinga) MIT License (29/10/2020)
 
 fzy_lite() {
