@@ -7,20 +7,21 @@
 
 useless() {
     [ -z $1 ] && lines="$(echo "$(< /dev/stdin)")" || lines="$(cat "$1")";
-    numlines="$(echo "$lines" | wc -l)";
+    numlines="$(echo "$lines" | wc -l)" && height="$(tput lines)" && \
     echo -e "\e[?1049h" && b=1 && r="" || return 1
     while true; do
-        clear;
-        b2="$((b+$(tput lines)-2))";
+        b2="$((b+height-2))";
         echo "$lines" | sed -n "$b,${b2}p;${b2}q" | grep --colour=always "^\|$r"
-        read -sn1 -p ":" < /dev/tty char;
+        lastline="$([[ $numlines -ge $height ]] && echo $((numlines-height+2)))"
+        [[ $b -eq $lastline ]] && cur="$(tput rev)END$(tput sgr0)" || cur=":"
+        read -sn1 -p "$cur" < /dev/tty char && echo -e "$(tput el1)\r"
         case $char in
             'q') echo -e "\e[?1049l" && return;;
             'k') [[ $b -gt 1 ]] && b=$((b-1));;
-            'j') [[ $b -lt $numlines ]] && b=$((b+1));;
+            'j') [[ $b -lt $lastline ]] && b=$((b+1));;
             'g') b=1;;
-            'G') b=$numlines;;
-            '/') read -p "search:" < /dev/tty r;
+            'G') b=$lastline;;
+            '/') read -p "/" < /dev/tty r
         esac
     done
 }
