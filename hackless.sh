@@ -17,13 +17,13 @@ hackless() {
         [[ $char == $(printf "\u1b") ]] && read -rsn2 -p "$cur" < /dev/tty char
         case $char in
             'q') echo -e "\e[?1049l" && return;;
-            'k')  [[ $row -gt 1 ]] && row=$((row-1));;
-            'j')  [[ $row -lt $lastline ]] && row=$((row+1));;
-            'h')  [[ $col -gt 1 ]] && col=$((col-1));;
-            'l')  col=$((col+1));;
-            'g')  row=1;;
-            'G')  row=$lastline;;
-            '/')  read -p "/" < /dev/tty regex;;
+            'k') [[ $row -gt 1 ]] && row=$((row-1));;
+            'j') [[ $row -lt $lastline ]] && row=$((row+1));;
+            'h') [[ $col -gt 1 ]] && col=$((col-1));;
+            'l') col=$((col+1));;
+            'g') row=1;;
+            'G') row=$lastline;;
+            '/') read -p "/" < /dev/tty regex;;
         esac
     done
 }
