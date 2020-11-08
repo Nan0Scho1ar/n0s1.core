@@ -1,4 +1,8 @@
 #!/bin/sh
+# DISCORD_WEBHOOKS: Tool for managing and messaging using discord webhooks
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 17/10/2020
+# License: MIT License
 
 save() { read -p "Enter $1: " r1; read -p "Enter $2: " r2; echo "$r1~|~$r2" >> $3; }
 delete() { sed -i $(cat -n $1 | fzf --with-nth 2.. | awk '{print $1"d"}') $1; }

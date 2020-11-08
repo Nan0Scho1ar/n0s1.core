@@ -1,6 +1,6 @@
 #!/bin/sh
-# Simple get/set commands to read and write toml files
-# Not all featues supported
+# TOML: Simple get/set commands to read and write toml files
+# (Not all featues supported)
 # Author: Nan0Scho1ar (Christopher Mackinga)
 # Created: 27/10/2020
 # License: MIT License
