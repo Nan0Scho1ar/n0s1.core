@@ -4,4 +4,4 @@
 # Created: 07/11/2020
 # License: MIT License
 
-check_root () { [[ $EUID - 0 ]] && echo "Error this script must be run as root"  && exit 1; }
+check_root () { [[ $EUID - 0 ]] && echo "Error this must be run as root"  && return 1; }
