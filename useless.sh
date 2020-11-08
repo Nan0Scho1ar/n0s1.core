@@ -12,7 +12,7 @@ useless() {
     while true; do
         echo "$lines" | sed -n "$row,$((row+height-2))p;$((row+height-2))q"\
             | cut -c $col- | grep --colour=always "^\|$regex";
-        read -rsn1 -p "$cur" < /dev/tty char && echo -e "$(tput el1)\r"
+        read -rsn1 -p ":" < /dev/tty char && echo -e "$(tput el1)\r"
         case $char in
             'q') echo -e "\e[?1049l" && return;;
             'k') [[ $row -gt 1 ]] && row=$((row-1));;
