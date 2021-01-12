@@ -5,7 +5,7 @@
 # License: MIT License
 
 hackless() {
-    [ -z $1 ] && lines="$(echo "$(< /dev/stdin)")" || lines="$(cat "$1")";
+    lines="$(cat "$1" || cat /dev/stdin)"
     row=1 && col=1 && regex="" &&
     height="$(tput lines)" && cols=$(tput cols) &&
     numln="$(echo "$lines" | wc -l)" &&

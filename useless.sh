@@ -6,7 +6,7 @@
 # 20 line pager. Not very useful in its current form but easily extended
 
 useless() {
-    [ -z $1 ] && lines="$(echo "$(< /dev/stdin)")" || lines="$(cat "$1")";
+    lines="$(cat "$1" || cat /dev/stdin)"
     numlines="$(echo "$lines" | wc -l)" && height="$(tput lines)" && \
     echo -e "\e[?1049h" && row=1 && col=1 && regex="" || return 1
     while true; do
