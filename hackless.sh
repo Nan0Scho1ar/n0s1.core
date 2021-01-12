@@ -15,7 +15,6 @@ hackless() {
     lines="$lines$(echo; yes '~' | sed -n "1,${cols}p;${cols}q")" &&
     echo -e "\e[?1049h" || return 1
     while true; do
-        #echo -e "'\033[;H'"
         echo "$lines" | sed -n "$row,$((row+height-2))p;$((row+height-2))q" \
             | cut -c $col-$((col+cols-1)) | grep --colour=always "^\|$regex";
         [[ $row -eq $lastln ]] && cur="$(tput rev)END$(tput sgr0)" || cur=":"

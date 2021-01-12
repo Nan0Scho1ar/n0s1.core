@@ -8,28 +8,27 @@
 exprq() { expr "$1" : "$2" 1>/dev/null; }
 
 toml() {
+    cmd="$1"
+    [ -z $2 ] && lines="$(echo "$(< /dev/stdin)")" || lines="$(cat "$2")";
     parent="$(echo $3 | sed 's/\(.*\)\.\(.*\)/\1/')"
     key="$(echo $3 | sed 's/\(.*\)\.\(.*\)/\2/')"
     value="$4"
 
-    if [ $1 = "get" ]; then
-        #Global
-        if exprq "$parent" "$key"; then
-            sed -n "/\\[.*\\]/q;p" "$2" | \
-            # TODO support multiline arrays
-                sed -n "s/^\s*$key=\(.*\)/\1/p"
-        # Filter to subheading then get value
-        else
-            sed -n "/^\s*\[$parent\]/,/\[.*\]/{//!p;}" "$2" | \
-                # TODO support multiline arrays
-                sed -n "s/^\s*$key=\(.*\)/\1/p"
-        fi
+    if [ $cmd = "get" ]; then
+        # TODO support multiline arrays
+        #Remove comments; Filter section; Return value
+        begin="$(exprq "$parent" "$key" && echo "0" || echo "/^\s*\[$parent\]/")"
+        echo "$lines" | sed -n "s/#.*//g;$begin,/^s*\[.*\]/!d;s/^\s*\"*$key\"*\s*=\s*\(.*\)/\1/p"
 
     #TODO Fix file indenting
-    elif [ $1 = "set" ]; then
+    elif [ $cmd = "set" ]; then
+    #echo $cmd
+    #echo $parent
+    #echo $key
+    #echo $value
         if exprq "$parent" "$key"; then
             updated=false
-            sed -n "/\\[.*\\]/q;p" "$2" | \
+            sed -n "/\\[.*\\]/q;p" "$lines" | \
             while read line; do
                 if exprq "$line" "$key=.*"; then
                     echo "$key=$value";
@@ -39,11 +38,11 @@ toml() {
                 echo $line;
             done
             $updated || echo "$key=$value";
-            sed -n "/\\[.*\\]/,/EOF/p" "$2"
+            sed -n "/\\[.*\\]/,/EOF/p" "$lines"
         else
             in_parent=false
             # try to update value for existing header
-            cat "$2" | while read line; do
+            cat "$lines" | while read line; do
                 exprq "$line" "\\[.*\\]" && in_parent=false;
                 # Set in_parent if currently inside correct header
                 exprq "$line" "\\[$parent\\]" && in_parent=true;
@@ -64,10 +63,10 @@ toml() {
                 echo $line;
             done;
             # If the header doesn't exist add it and the value
-            if ! grep -q "\\[$parent\\]" "$2"; then
+            if ! grep -q "\\[$parent\\]" "$lines"; then
                 # TODO Recursively look for parent headers not dump
-                # at bottom of file
-                echo "[$parent]" >> $2 && echo "$key=$value" >> $2
+                # at bottom of lines
+                echo "[$parent]" >> $lines && echo "$key=$value" >> $lines
                 return
             fi
         fi
