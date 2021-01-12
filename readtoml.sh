@@ -12,6 +12,7 @@ sed -n "s/#.*//g;$([[ $1 =~ \. ]] && echo "/^\s*\[`sed 's/\..*//' <<< $1`\]/" ||
 #Super Minimal version which doesn't strip comments before processing and can't handle malformed whitespace
 #cat $2 | sed -n "$([[ $1 =~ \. ]] && echo "/^\[`sed 's/\..*//' <<< $1`\]/" || echo 0),/\^[.*\]/!d;s/^\s*\"*`sed 's/.*\.//' <<< $1`\"*\s=\s//p"
 
+#Explainer
 #parent="$(sed 's/\..*//' <<< "$1")"
 #key="$(sed 's/.*\.\//' <<< "$1")"
 #begin="$([[ $1 =~ \. ]] && echo "/^\s*\[$parent\]/" || echo 0)"
