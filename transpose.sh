@@ -10,4 +10,4 @@ END {
         sub(/^ /, "", col[i]);
         print col[i]
     }
-}' file.txt
+}' $1
