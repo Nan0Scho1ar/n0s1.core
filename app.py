@@ -1,6 +1,9 @@
-#1/bin/python
-#APP.PY    Flask server to serve html or plain text depending on client's useragent string
-#Requires flask, pygments, markdown
+#!/bin/python
+# APP.PY: Flask server to serve html or plain text depending on client's useragent string
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 21/01/2021
+# License: MIT License
+# Requires flask, pygments, markdown
 
 import sys
 import os
@@ -11,17 +14,16 @@ from flask import Flask, request, make_response, render_template, abort
 from pygments.formatters import HtmlFormatter
 
 PLAIN_TEXT_AGENTS = [ "curl", "httpie", "lwp-request", "wget", "python-requests", "openbsd ftp", "powershell", "fetch" ]
-
+INDEX_PATH = "./README.md"
 app = Flask(__name__)
 
 def to_html(lines):
     md = markdown.markdown(lines, extensions=["fenced_code", "codehilite"])
     formatter = HtmlFormatter(style="monokai",full=True,cssclass="codehilite")
-    css_string = formatter.get_style_defs() + "\nbody { background-color: #33363B; color: #CCCCCC;}\ntd.linenos pre { background-color: #AAAAAA; }"
-    return "<style>" + css_string + "</style>" + md
+    css = "\nbody { background-color: #33363B; color: #CCCCCC;}\ntd.linenos pre { background-color: #AAAAAA; }"
+    return "<style>" + formatter.get_style_defs() + css + "</style>" + md
 
-
-def get_filepath(path, is_man):
+def get_file_path(path, is_man):
     if is_man:
         if path == None:
             return "./man/README.md"
@@ -31,78 +33,55 @@ def get_filepath(path, is_man):
             return "./man/" + path + ".md"
     else:
         if path == None:
-            return "./README.md"
+            return INDEX_PATH
         elif os.path.isfile("./" + path):
             return "./" + path
         elif os.path.isfile("./" + path + ".sh"):
             return "./" + path + ".sh"
     return None
 
-def try_get_lines(filepath):
-    if filepath == None:
+def try_get_lines(file_path):
+    if file_path == None:
         return ""
-    with open(filepath) as f:
+    with open(file_path) as f:
         lines = f.read()
     return lines
+
+def get_content(path, request, is_man, is_raw):
+    file_path = get_file_path(path, is_man)
+    lines = try_get_lines(file_path)
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if any([x in user_agent for x in PLAIN_TEXT_AGENTS]):
+        return "Error: file not found" if file_path == None else lines
+    if file_path == None:
+        abort(404)
+    if is_raw:
+        resp = make_response(lines)
+        resp.mimetype = 'text/plain'
+        return resp
+    if file_path == INDEX_PATH or is_man:
+        return to_html(lines)
+    #This must be the base url so display the man above the file
+    man_path = get_file_path(path, True)
+    man_lines = try_get_lines(man_path)
+    return to_html(man_lines + "\n##CODE:\n```\n" + lines + "\n```")
 
 @app.route("/")
 @app.route("/<path>")
 def get_file(path=None):
-    filepath = get_filepath(path, False)
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if any([x in user_agent for x in PLAIN_TEXT_AGENTS]):
-        return "Error: file not found" if filepath == None else try_get_lines(filepath)
-    else:
-        filepath2 = get_filepath(path, True)
-        if filepath == None and filepath2 == None:
-            abort(404)
-        lines = try_get_lines(filepath)
-        if filepath == "./README.md":
-            return to_html(lines)
-        lines2 = try_get_lines(filepath2)
-        return to_html(lines2 + "\n##CODE:\n```\n" + lines + "\n```")
-
+    return get_content(path, request, False, False)
 
 @app.route("/man/<path>")
 def get_man(path=None):
-    filepath = get_filepath(path, True)
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if any([x in user_agent for x in PLAIN_TEXT_AGENTS]):
-        return "Error: file not found" if filepath == None else try_get_lines(filepath)
-    else:
-        if filepath == None:
-            abort(404)
-        lines = try_get_lines(filepath)
-        return to_html(lines)
-
+    return get_content(path, request, True, False)
 
 @app.route("/raw/<path>")
 def get_raw(path=None):
-    filepath = get_filepath(path, False)
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if any([x in user_agent for x in PLAIN_TEXT_AGENTS]):
-        return "Error: file not found" if filepath == None else try_get_lines(filepath)
-    else:
-        if filepath == None:
-            abort(404)
-        resp = make_response(try_get_lines(filepath))
-        resp.mimetype = 'text/plain'
-        return resp
-
+    return get_content(path, request, False, True)
 
 @app.route("/raw/man/<path>")
-def get_raw(path=None):
-    filepath = get_filepath(path, True)
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if any([x in user_agent for x in PLAIN_TEXT_AGENTS]):
-        return "Error: file not found" if filepath == None else try_get_lines(filepath)
-    else:
-        if filepath == None:
-            abort(404)
-        resp = make_response(try_get_lines(filepath))
-        resp.mimetype = 'text/plain'
-        return resp
-
+def get_raw_man(path=None):
+    return get_content(path, request, True, True)
 
 if __name__ == '__main__':
     app.run()
