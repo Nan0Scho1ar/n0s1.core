@@ -84,4 +84,4 @@ def get_raw_man(path=None):
     return get_content(path, request, True, True)
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0')
