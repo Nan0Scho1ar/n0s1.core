@@ -4,7 +4,7 @@
 # Created: 11/1/2021
 # License: MIT License
 # TODO support multiline values
-# TODO support dotted notation
+# TODO support dotted notation (dotted headers/parent already work)
 # TODO apologize to my future self or anyone who has to maintin this
 
 sed -n "s/#.*//g;$([[ $1 =~ \. ]] && echo "/^\s*\[`sed 's/\..*//' <<< $1`\]/" || echo 0),/\^\s*[.*\]/!d;s/^\s*\"*`sed 's/.*\.//' <<< $1`\"*\s*=\s*//p" <<< $(cat $2 || cat /dev/stdin)
