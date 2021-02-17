@@ -131,7 +131,7 @@ esac
 #Detect distro
 if [ $NANOS_NAME = "linux" ]; then
     distros=("Arch" "Ubuntu")
-    select opt in "${distros}"; do
+    select opt in "${distros[@]}"; do
         NANOS_DISTRO="$opt"
         break
     done
@@ -142,9 +142,9 @@ else
 fi
 
 #Set repos dir
-NANOS_REPOS_DIR="~/repos"
+NANOS_REPOS_DIR="$HOME/repos"
 if [ $NANOS_NAME = "linux" ]; then
-    NANOS_REPOS_DIR="~/repos"
+    NANOS_REPOS_DIR="$HOME/repos"
 elif [ $NANOS_NAME = "windows" ]; then
     NANOS_REPOS_DIR="~/source/repos"
 fi
@@ -201,6 +201,8 @@ if [ $NANOS_DISTRO = "Arch" ]; then
     trypacmaninstall youtube-viewer
     trypacmaninstall zathura
     trypacmaninstall bat
+    trypacmaninstall ttf-jetbrains-mono
+
 
     ### AUR
     tryaurinstall minecraft-launcher
@@ -250,7 +252,6 @@ asklinksudo "/etc/update-motd.d/10-help-text" "/home/nan0scho1ar/dotfiles/linux/
 asklinksudo "/etc/hosts" "/home/nan0scho1ar/dotfiles/linux/hosts" "/etc/hosts"
 #if ask "link .xmonad"; then
     #if [ -d ~/.xmonad ]; then
-    tryaptinstall pandoc
     #fi
     #mkdir ~/.xmonad
     #ln ~/dotfiles/.xmonad/xmonad.hs ~/.xmonad/xmonad.hs
