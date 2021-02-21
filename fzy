@@ -8,10 +8,11 @@ input="$(< /dev/stdin)"; height="$(tput lines)"; inum=$(echo "$input" | wc -l)
 echo -e "\e[?1049h"; row=1; col=1; str=""; cur=1; fnum=$inum; regex=""; regex2=""
 while true; do
     range="$row,$((row+height-3))p;$((row+height-3))q"
-    filtered=$(echo "$input" | grep ".*$regex" | sed -e $range | sed -e 's/.*/  &/');
+    filtered=$(echo "$input" | grep ".*$regex" | sed -n $range | sed -e 's/.*/  &/');
     frangenum="$(echo "$filtered" | wc -l)"
     echo "$filtered" | cut -c$col- | grep -E --color=always "$regex2" | tac |
-        sed $((frangenum-cur+1))'s/^  \(.*\)/> \1/' 2>/dev/null && echo "  $fnum/$inum"
+        sed $((frangenum-cur+1))'s/^  \(.*\)/> \1/'
+    echo "  $fnum/$inum"
     read -p "> $str" -n 1 -s < /dev/tty && read -sn3 -t 0.001 k1 < /dev/tty; REPLY+=$k1;
     case "$REPLY" in
         '') echo -e "\e[?1049l$(echo "$filtered" | sed -n "${cur}s/  //p;${cur}q;")" && exit;;
