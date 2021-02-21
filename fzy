@@ -9,8 +9,8 @@ echo -e "\e[?1049h"; row=1; col=1; str=""; cur=1; fnum=$inum; regex=""; regex2="
 while true; do
     range="$row,$((row+height-3))p;$((row+height-3))q"
     filtered=$(echo "$input" | grep ".*$regex" | sed -n $range 2>/dev/null | sed -e 's/.*/  &/');
-    frangenum="$(echo "$filtered" | wc -l)"
-    curpos=$((frangenum-cur+1))
+    frange="$(echo "$filtered" | wc -l)"
+    curpos=$((frange-cur+1))
     echo "$filtered" | cut -c$col- | grep -E --color=always "$regex2" | tac | sed $curpos's/^  \(.*\)/> \1/'
     echo "  $fnum/$inum" && read -p "> $str" -n 1 -s < /dev/tty && read -sn3 -t 0.001 k1 < /dev/tty; REPLY+=$k1;
     case "$REPLY" in
@@ -31,10 +31,10 @@ while true; do
             fnum=$(echo "$input" | grep ".*$regex" | wc -l)
         ;;
     esac
-    [[ $((frangenum-cur+1)) -lt 1 ]] && row=$((row+1)) && cur=$((cur-1));
+    [[ $((frange-cur+1)) -lt 1 ]] && row=$((row+1)) && cur=$((cur-1));
     [[ $cur -lt 1 ]] && row=$((row-1)) && cur=$((cur+1));
     [[ $cur -gt $fnum ]] && cur=$fnum;
-    [[ $((row-fnum+frangenum)) -gt 1 ]] && row=$((row-1))
+    [[ $((row-fnum+frange)) -gt 1 ]] && row=$((row-1))
     [[ $row -lt 1 ]] && row=1;
     yes '' | sed "${height}q";
 done
