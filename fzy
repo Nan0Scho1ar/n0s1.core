@@ -24,19 +24,17 @@ while true; do
         *)
             char=$(echo $REPLY | hexdump -c | awk '{ print $2 }');
             if [[ $char = "033" ]]; then echo -e "\e[?1049l" && break;
-            elif [[ $char = "177" ]] && [[ $(echo $str | wc -m) -gt 1 ]]; then
-                 str="${str::-1}"
+            elif [[ $char = "177" ]] && [[ $(echo $str | wc -m) -gt 1 ]]; then str="${str::-1}";
             else str="$str$REPLY" && row=1; fi
             regex=$(echo "$str" | sed "s/\(.\)/\1.*/g");
             regex2=$(echo "$str" | sed "s/\(.\)/\1|/g");
             fnum=$(echo "$input" | grep ".*$regex" | wc -l)
         ;;
     esac
-    curpos=$((frangenum-cur+1))
-    [[ $((curpos)) -lt 1 ]] && row=$((row+1)) && cur=$((cur-1))
-    [[ $((row-fnum+frangenum)) -gt 1 ]] && row=$((row-1));
-    [[ $cur -lt 1 ]] && row=$((row-1)) && cur=$((cur+1))
-    [[ $row -lt 1 ]] && row=1
-    [[ $cur -gt $fnum ]] && cur=$fnum
+    [[ $((frangenum-cur+1)) -lt 1 ]] && row=$((row+1)) && cur=$((cur-1));
+    [[ $cur -lt 1 ]] && row=$((row-1)) && cur=$((cur+1));
+    [[ $cur -gt $fnum ]] && cur=$fnum;
+    [[ $((row-fnum+frangenum)) -gt 1 ]] && row=$((row-1))
+    [[ $row -lt 1 ]] && row=1;
     yes '' | sed "${height}q";
 done
