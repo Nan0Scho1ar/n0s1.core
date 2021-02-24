@@ -22,49 +22,78 @@ fi
 
 
 trypacmaninstall() {
-    pacman -Qi "$1" 1>/dev/null 2>/dev/null && echo "$1 is already installed" && return
-    #Idk if this check works properly
-    pacman -Qg "$1" 1>/dev/null 2>/dev/null && echo "$1 is already installed" && return
-    echo "Installing $1" && sudo pacman -S "$1"
+    pkgs=`echo $@ | sed "s/--prompt //"`
+    if [[ $1 == "--prompt" ]] && ask "install $pkgs"; then
+        for pkg in $@; do
+            if [[ $pkg == "--prompt" ]]; then continue; fi
+            pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "$pkg@ is already installed" && return
+            #Idk if this check works properly
+            pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "$pkg@ is already installed" && return
+            echo "${red}Installing $pkg@${reset}" && pacman -S $pkg@;
+        done
+    fi
 }
 
 tryaurinstall() {
-    pacman -Qi "$1" 1>/dev/null 2>/dev/null && echo "$1 is already installed" && return
-    #Idk if this check works properly
-    pacman -Qg "$1" 1>/dev/null 2>/dev/null && echo "$1 is already installed" && return
-    echo "Installing $1" && yay -S "$1";
+    pkgs=`echo $@ | sed "s/--prompt //"`
+    if [[ $1 == "--prompt" ]] && ask "install $pkgs"; then
+        for pkg in $@; do
+            if [[ $pkg == "--prompt" ]]; then continue; fi
+            pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "$pkg@ is already installed" && return
+            #Idk if this check works properly
+            pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "$pkg@ is already installed" && return
+            echo "${red}Installing $pkg@${reset}" && yay -S $pkg@;
+        done
+    fi
 }
 
-tryaptinstall() { echo "Installing $1" && sudo apt install "$1"; }
+tryaptinstall() { echo "${magenta}Installing $1${reset}" && sudo apt install "$1"; }
 
 wait_any_key() { read -n 1 -s -r -p "Press any key to continue"; }
 
 #Promts the user to answer a yes/no question.
 #Returns after a single char is entered without hitting return.
 ask() {
-    read -p "${1} ${yellow}y/n${reset} " -n 1 -r
-    echo
-    [[ $REPLY =~ ^[Yy]$ ]] && return 0 || return 1
+    while true; do
+    read -p "${1} ${yellow}y/n${reset} " -sn1
+        echo
+        [[ $REPLY =~ ^[Yy]$ ]] && return 0
+        [[ $REPLY =~ ^[Nn]$ ]] && return 1
+    done
 }
 
 asklink() {
     if ask "Link $1"; then
-	#Create dir if not exist
-	mkdir -p "$(dirname "${3}")"
+        #Create dir if not exist
+        mkdir -p "$(dirname "${3}")"
         if [ -f "$3" ]; then
-            rm "$3"
+            if ask "$1 already exists. Remove it?"; then
+                rm "$3"
+            fi
         fi
         ln -sf "$2" "$3"
     fi
 }
 
-asklinkdir() {
-    if ask "Link $1"; then
-	#Create dir if not exist
-        #if [ -d "$3" ]; then
-             rmdir "$3" 2>/dev/null || rm -r "$3"
-        #fi
-        ln -sf "$2" "$3"
+#This is not actually recursive lol
+askrecursivelinkdir() {
+    if ask "Recursively Link $1"; then
+        #Create dir if not exist
+        mkdir -p "$3"
+        for dir in $(find --type d $2); do
+            echo "Creating $3/$dir"
+            #Create child dirs if not exist
+            mkdir -p "$3/$dir"
+        done
+        for file in $(find --type f $2); do
+            if [ -f "$3/$file" ]; then
+                if [ "$(diff -q "$2/file" "$3/file")" != "" ] ||
+                    ask "$1 already exists and is not identical. Remove it?"; then
+                    rm -r "$3"
+                fi
+            fi
+            ln -s "$2/$file" "$3/$file"
+        done
     fi
 }
 
@@ -73,6 +102,7 @@ asklinksudo() {
 	#Create dir if not exist
 	sudo mkdir -p "$(dirname "${3}")"
         if [ -f "$3" ]; then
+            if ask "$1 already exists. Remove it?"; then
             sudo rm "$3"
         fi
         sudo ln -sf "$2" "$3"
@@ -84,7 +114,7 @@ askclone() {
         echo "Directory $1 already exists, skipping..."
     elif ask "Clone ${1}"; then
         echo "Cloning $1"
-        git clone $2
+        git clone --recurse-submodules $2
     fi
 }
 
@@ -102,56 +132,58 @@ setup_ssh() {
         echo "Generating ssh key..."
         ssh-keygen
     fi
-    ask "cat public key" && cat .ssh/id_rsa.pub
-    echo "Add ssh key to bitbucket before continuing."
-    sh firefox "https://id.atlassian.com/login?application=bitbucket"
+    ask "add public key to remotes" && cat .ssh/id_rsa.pub && echo "Add ssh key to bitbucket and github before continuing." \
+        && sh brave "https://bitbucket.org/account/settings/ssh-keys/" "https://github.com/settings/keys"
     wait_any_key
 }
 
 #Detect OS
-case $(uname | tr '[:upper:]' '[:lower:]') in
-  linux*)
-    export NANOS_NAME=linux
-    ;;
-  darwin*)
-    export NANOS_NAME=osx
-    ;;
-  msys*)
-    export NANOS_NAME=windows
-    ;;
-  MINGW64_NT-10.0*)
-    export NANOS_NAME=windows
-    ;;
-  *)
-    export NANOS_NAME=notset
-    ;;
-esac
-# TODO Warn if NANOS_NAME = notset
+detect_os() {
+    case $(uname | tr '[:upper:]' '[:lower:]') in
+      linux*)
+        export NANOS_NAME=linux
+        ;;
+      darwin*)
+        export NANOS_NAME=osx
+        ;;
+      msys*)
+        export NANOS_NAME=windows
+        ;;
+      MINGW64_NT-10.0*)
+        export NANOS_NAME=windows
+        ;;
+      *)
+        export NANOS_NAME=notset
+        ;;
+    esac
+    # TODO Warn if NANOS_NAME = notset
 
-#Detect distro
-if [ $NANOS_NAME = "linux" ]; then
-    distros=("Arch" "Ubuntu")
-    select opt in "${distros[@]}"; do
-        NANOS_DISTRO="$opt"
-        break
-    done
-elif [ $NANOS_NAME = "linux" ]; then
-    NANOS_DISTRO="Windows"
-else
-    NANOS_DISTRO="N/A"
-fi
+    #Detect distro
+    if [ $NANOS_NAME = "linux" ]; then
+        distros=("Arch" "Ubuntu")
+        select opt in "${distros[@]}"; do
+            NANOS_DISTRO="$opt"
+            break
+        done
+    elif [ $NANOS_NAME = "linux" ]; then
+        NANOS_DISTRO="Windows"
+    else
+        NANOS_DISTRO="N/A"
+    fi
 
-#Set repos dir
-NANOS_REPOS_DIR="$HOME/repos"
-if [ $NANOS_NAME = "linux" ]; then
+    #Set repos dir
     NANOS_REPOS_DIR="$HOME/repos"
-elif [ $NANOS_NAME = "windows" ]; then
-    NANOS_REPOS_DIR="~/source/repos"
-fi
+    if [ $NANOS_NAME = "linux" ]; then
+        NANOS_REPOS_DIR="$HOME/repos"
+    elif [ $NANOS_NAME = "windows" ]; then
+        NANOS_REPOS_DIR="~/source/repos"
+    fi
+}
 
 
 # BEGIN
 
+detect_os
 cd ~
 
 # Setup ssh
@@ -165,20 +197,28 @@ askclone "vimwiki" "git@bitbucket.org:Nan0Scho1ar/vimwiki.git"
 echo $NANOS_REPOS_DIR
 mkdir -p "$NANOS_REPOS_DIR"
 cd $NANOS_REPOS_DIR
+askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
+askclone "bish" "git@github.com:Nan0Scho1ar/bish"
+askclone "gitmanage" "git@github.com:Nan0Scho1ar/gitmanage"
 
-# Build and install repos
-##TODO Build and install
 cd ~
 
 
 
 # Update system
 if [ $NANOS_DISTRO = "Arch" ]; then
-    sudo pacman -Syu
-    yay -Syu
+    if ask "Upgrade packages"; then
+        sudo pacman -Syu
+        yay -Syu
+    else
+        sudo pacman -Sy
+        yay -Sy
+    fi
 elif [ $NANOS_DISTRO = "Ubuntu" ]; then
     sudo apt update
-    sudo apt upgrade
+    if ask "Upgrade packages"; then
+        sudo apt upgrade
+    fi
 ##TODO Windows
 fi
 
@@ -187,86 +227,81 @@ fi
 ## Arch
 if [ $NANOS_DISTRO = "Arch" ]; then
     ### Pacman
-    trypacmaninstall fd
-    trypacmaninstall ripgrep
-    trypacmaninstall fzf
-    trypacmaninstall neovim
-    trypacmaninstall flameshot
-    trypacmaninstall synergy
-    trypacmaninstall steam
-    trypacmaninstall keychain
-    trypacmaninstall code
-    trypacmaninstall youtube-dl
-    trypacmaninstall mpv
-    trypacmaninstall youtube-viewer
-    trypacmaninstall zathura
-    trypacmaninstall bat
-    trypacmaninstall ttf-jetbrains-mono
-
+    trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy steam code youtube-dl mpv youtube-viewer zathura yay
 
     ### AUR
-    tryaurinstall minecraft-launcher
-    tryaurinstall pandoc
-    tryaurinstall texlive-most
-    tryaurinstall postman
+    tryaurinstall --prompt minecraft-launcher
+    tryaurinstall --prompt pandoc
+    tryaurinstall --prompt texlive-most
+    tryaurinstall --prompt postman
     ###TODO Install Rider
+
 
 ## Ubuntu
 elif [ $NANOS_DISTRO = "Ubuntu" ]; then
-    tryaptinstall fd
-    tryaptinstall ripgrep
-    tryaptinstall fzf
-    tryaptinstall flameshot
-    tryaptinstall synergy
-    tryaptinstall steam
-    tryaptinstall keychain
-    tryaptinstall code
-    tryaptinstall youtube-dl
-    tryaptinstall mpv
-    tryaptinstall youtube-viewer
-    tryaptinstall zathura
-    tryaptinstall bat
+    if ask "Install packages"; then
+        tryaptinstall fd-find
+        tryaptinstall ripgrep
+        tryaptinstall fzf
+        tryaptinstall flameshot
+        tryaptinstall synergy
+        tryaptinstall steam
+        tryaptinstall keychain
+        tryaptinstall code
+        tryaptinstall youtube-dl
+        tryaptinstall mpv
+        tryaptinstall youtube-viewer
+        tryaptinstall zathura
+        tryaptinstall bat
 
-    tryaptinstall minecraft-launcher
-    tryaptinstall neovim
-    tryaptinstall pdflatex
-    tryaptinstall texlive-most
-    tryaptinstall postman
+        tryaptinstall minecraft-launcher
+        tryaptinstall neovim
+        tryaptinstall pdflatex
+        tryaptinstall pandoc
+        tryaptinstall texlive-most
+        tryaptinstall postman
+    fi
     ###TODO Install Rider
+
+
+    #fd is already used on Ubuntu
+    ask "Link fdfind to fd (ubuntu only)" && ln -s $(which fdfind) ~/.local/bin/fd
+
 fi
 ##TODO Windows
 
 
-
-# Create symlinks
-asklink ".bashrc" "/home/nan0scho1ar/dotfiles/.bashrc" "/home/nan0scho1ar/.bashrc"
-#TODO this should be in .bash_aliases
+#asklinksudo "/etc/update-motd.d/10-help-text" "/home/nan0scho1ar/dotfiles/linux/99-banner" "/etc/update-motd.d/99-banner"
 asklink ".aliases" "/home/nan0scho1ar/dotfiles/.aliases" "/home/nan0scho1ar/.aliases"
+asklink ".bashrc" "/home/nan0scho1ar/dotfiles/.bashrc" "/home/nan0scho1ar/.bashrc"
 asklink ".git_aliases" "/home/nan0scho1ar/dotfiles/.git_aliases" "/home/nan0scho1ar/.git_aliases"
+asklink ".profile" "/home/nan0scho1ar/dotfiles/.profile" "/home/nan0scho1ar/.profile"
 asklink ".vimrc" "/home/nan0scho1ar/dotfiles/.vimrc" "/home/nan0scho1ar/.vimrc"
 asklink ".xprofile" "/home/nan0scho1ar/dotfiles/.xprofile" "/home/nan0scho1ar/.xprofile"
-asklink ".profile" "/home/nan0scho1ar/dotfiles/.profile" "/home/nan0scho1ar/.profile"
-pwd
-asklinkdir ".config" "/home/nan0scho1ar/dotfiles/.config" "/home/nan0scho1ar/.config"
-asklinksudo "/etc/update-motd.d/10-help-text" "/home/nan0scho1ar/dotfiles/linux/99-banner" "/etc/update-motd.d/99-banner"
+asklink ".zshenv" "/home/nan0scho1ar/dotfiles/.zshenv" "/home/nan0scho1ar/.zshenv"
+askrecursivelinkdir ".config" "/home/nan0scho1ar/dotfiles/.config" "/home/nan0scho1ar/.config"
 asklinksudo "/etc/hosts" "/home/nan0scho1ar/dotfiles/linux/hosts" "/etc/hosts"
+
+# Create symlinks
 #if ask "link .xmonad"; then
     #if [ -d ~/.xmonad ]; then
     #fi
     #mkdir ~/.xmonad
     #ln ~/dotfiles/.xmonad/xmonad.hs ~/.xmonad/xmonad.hs
 
+
 # Setup vim/nvim
 ## vim
 if ask "Install vim/nvim plugins"; then
     if [ $NANOS_NAME = "linux" ]; then
+        if [[ -z "~/.vim/autoload/plug.vim" ]]; then
         curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
             https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
         vim -E -s +PlugInstall +visual +qall
+        fi
 
-	mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload
-        cp ~/.vim/autoload/plug.vim \
-            "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim
+        mkdir -p "${HOME}/.config/nvim/site/autoload"
+        cp ~/.vim/autoload/plug.vim "${HOME}/.config/nvim/site/autoload/plug.vim"
         nvim -E -s +PlugInstall +visual +qall
     fi
 fi
@@ -277,4 +312,5 @@ if ask "Update git settings"; then
     git config --global user.email "scorch267@gmail.com"
         #rm -r ~/.xmonad
     git config --global user.name "nan0scho1ar"
+    git config --global core.editor vim
 fi
