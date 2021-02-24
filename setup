@@ -87,7 +87,7 @@ askrecursivelinkdir() {
                 mkdir -p "$3/$dir"
             fi
         done
-        for file in $(find "$2" -type f | sed "s|$2||"); do
+        for file in $(find "$2" -type f | sed "s|$2/*||"); do
             if [ -f "$3/$file" ]; then
                 if [ "$(diff -q "$2/$file" "$3/$file")" != "" ]; then
                     ask "'$3/$file' already exists and is not identical. Show diff" && diff -q "$2/$file" "$3/$file"
@@ -271,7 +271,7 @@ elif [ $NANOS_DISTRO = "Ubuntu" ]; then
 
 
     #fd is already used on Ubuntu
-    ask "Link fdfind to fd (ubuntu only)" && ln -s $(which fdfind) ~/.local/bin/fd
+    [ -f ~/.local/bin/fd ] && ask "Link fdfind to fd (ubuntu fix)" && ln -s $(which fdfind) ~/.local/bin/fd
 
 fi
 ##TODO Windows
