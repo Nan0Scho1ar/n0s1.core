@@ -80,18 +80,23 @@ askrecursivelinkdir() {
     if ask "Recursively Link $1"; then
         #Create dir if not exist
         mkdir -p "$3"
-        for dir in $(find --type d $2); do
-            echo "Creating $3/$dir"
-            #Create child dirs if not exist
-            mkdir -p "$3/$dir"
+        for dir in $(find "$2" -type d | sed "s|$2||"); do
+            if [ ! -d "$3/$dir" ]; then
+                echo "Creating directory $3/$dir"
+                #Create child dirs if not exist
+                mkdir -p "$3/$dir"
+            fi
         done
-        for file in $(find --type f $2); do
+        for file in $(find "$2" -type f | sed "s|$2||"); do
             if [ -f "$3/$file" ]; then
-                if [ "$(diff -q "$2/file" "$3/file")" != "" ] ||
-                    ask "$1 already exists and is not identical. Remove it?"; then
-                    rm -r "$3"
+                if [ "$(diff -q "$2/$file" "$3/$file")" != "" ]; then
+                    ask "'$3/$file' already exists and is not identical. Show diff" && diff -q "$2/$file" "$3/$file"
+                    ask "Remove '$3/$file'" && rm "$3/$file"
+                else
+                    rm "$3/$file"
                 fi
             fi
+            echo "Linking $file"
             ln -s "$2/$file" "$3/$file"
         done
     fi
@@ -99,11 +104,12 @@ askrecursivelinkdir() {
 
 asklinksudo() {
     if ask "Link $1"; then
-	#Create dir if not exist
-	sudo mkdir -p "$(dirname "${3}")"
+        #Create dir if not exist
+        sudo mkdir -p "$(dirname "${3}")"
         if [ -f "$3" ]; then
             if ask "$1 already exists. Remove it?"; then
-            sudo rm "$3"
+                sudo rm "$3"
+            fi
         fi
         sudo ln -sf "$2" "$3"
     fi
