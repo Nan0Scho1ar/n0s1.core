@@ -285,6 +285,7 @@ asklink ".profile" "/home/nan0scho1ar/dotfiles/.profile" "/home/nan0scho1ar/.pro
 asklink ".vimrc" "/home/nan0scho1ar/dotfiles/.vimrc" "/home/nan0scho1ar/.vimrc"
 asklink ".xprofile" "/home/nan0scho1ar/dotfiles/.xprofile" "/home/nan0scho1ar/.xprofile"
 asklink ".zshenv" "/home/nan0scho1ar/dotfiles/.zshenv" "/home/nan0scho1ar/.zshenv"
+asklink ".tmux.conf" "/home/nan0scho1ar/dotfiles/.tmux.conf" "/home/nan0scho1ar/.tmux.conf"
 askrecursivelinkdir ".config" "/home/nan0scho1ar/dotfiles/.config" "/home/nan0scho1ar/.config"
 asklinksudo "/etc/hosts" "/home/nan0scho1ar/dotfiles/linux/hosts" "/etc/hosts"
 
