@@ -259,27 +259,24 @@ if [ $NANOS_DISTRO = "Arch" ]; then
 ## Ubuntu
 elif [ $NANOS_DISTRO = "Ubuntu" ]; then
     if ask "Install packages"; then
-        tryaptinstall fd-find
         tryaptinstall ripgrep
         tryaptinstall fzf
-        tryaptinstall flameshot
-        tryaptinstall synergy
-        tryaptinstall steam
         tryaptinstall keychain
-        tryaptinstall code
-        tryaptinstall youtube-dl
-        tryaptinstall mpv
-        tryaptinstall youtube-viewer
-        tryaptinstall zathura
         tryaptinstall tmux
         tryaptinstall curl
+        tryaptinstall youtube-dl
         tryaptinstall vim
         tryaptinstall neovim
         tryaptinstall nodejs
 
+        tryaptinstall fd-find
+        #fd is already used on Ubuntu
+        if dpkg-query -W -f='${Status}' fd-find 2> /dev/null | grep -q "install ok installed"; then
+            asklink "fdfind (ubuntu fix)" "$(which fdfind)" "$HOME/.local/bin/fd"
+        fi
         #Bat is not in standard repos because reasons
-	if dpkg-query -W -f='${Status}' bat | grep -q "install ok installed"; then
-	    echo "${green}bat${reset} is already installed"
+        if dpkg-query -W -f='${Status}' bat 2> /dev/null | grep -q "install ok installed"; then
+            echo "${green}bat${reset} is already installed"
         elif ask "'${magenta}bat${reset}' is not installed, would you like to install it"; then
             cur_dir=$(pwd)
             cd /tmp
@@ -288,18 +285,9 @@ elif [ $NANOS_DISTRO = "Ubuntu" ]; then
             cd $cur_dir
         fi
 
-
-        tryaptinstall minecraft-launcher
-        tryaptinstall neovim
-        tryaptinstall pdflatex
-        tryaptinstall pandoc
-        tryaptinstall texlive-most
-        tryaptinstall postman
     fi
     ###TODO Install Rider
 
-    #fd is already used on Ubuntu
-    [ -f ~/.local/bin/fd ] && ask "Link fdfind to fd (ubuntu fix)" && ln -s $(which fdfind) ~/.local/bin/fd
 
 fi
 ##TODO Windows
@@ -307,9 +295,7 @@ fi
 echo ${blue}Link files${reset}
 
 #asklinksudo "/etc/update-motd.d/10-help-text" "/home/nan0scho1ar/dotfiles/linux/99-banner" "/etc/update-motd.d/99-banner"
-asklink ".aliases" "/home/nan0scho1ar/dotfiles/.aliases" "/home/nan0scho1ar/.aliases"
 asklink ".bashrc" "/home/nan0scho1ar/dotfiles/.bashrc" "/home/nan0scho1ar/.bashrc"
-asklink ".git_aliases" "/home/nan0scho1ar/dotfiles/.git_aliases" "/home/nan0scho1ar/.git_aliases"
 asklink ".profile" "/home/nan0scho1ar/dotfiles/.profile" "/home/nan0scho1ar/.profile"
 asklink ".vimrc" "/home/nan0scho1ar/dotfiles/.vimrc" "/home/nan0scho1ar/.vimrc"
 asklink ".xprofile" "/home/nan0scho1ar/dotfiles/.xprofile" "/home/nan0scho1ar/.xprofile"
@@ -337,21 +323,21 @@ elif ask "Install vim/nvim plugins"; then
 	if [ ! -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
         echo "$HOME/.config/nvim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
         curl -fLo "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" --create-dirs \
-            https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+            https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 	fi
     fi
 fi
 
-echo ${blue}Git settings${reset}
-#Git settings
-if [ "$(git config --get pull.rebase)" = false ] &&
-   [ "$(git config --get user.email)" = "scorch267@gmail.com" ] &&
-   [ "$(git config --get user.name)" = "nan0scho1ar" ] &&
-   [ "$(git config --get core.editor)" = "vim" ]; then
-    echo "${green}Git${reset} configured correctly"
-elif ask "Update git settings"; then
-    git config --global pull.rebase false
-    git config --global user.email "scorch267@gmail.com"
-    git config --global user.name "nan0scho1ar"
-    git config --global core.editor "vim"
-fi
+#echo ${blue}Git settings${reset}
+##Git settings
+#if [ "$(git config --get pull.rebase)" = false ] &&
+#   [ "$(git config --get user.email)" = "scorch267@gmail.com" ] &&
+#   [ "$(git config --get user.name)" = "nan0scho1ar" ] &&
+#   [ "$(git config --get core.editor)" = "vim" ]; then
+#    echo "${green}Git${reset} configured correctly"
+#elif ask "Update git settings"; then
+#    git config --global pull.rebase false
+#    git config --global user.email "scorch267@gmail.com"
+#    git config --global user.name "nan0scho1ar"
+#    git config --global core.editor "vim"
+#fi
