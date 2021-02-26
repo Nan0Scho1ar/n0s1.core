@@ -205,7 +205,7 @@ mkdir -p "$NANOS_REPOS_DIR"
 cd $NANOS_REPOS_DIR
 askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
 askclone "bish" "git@github.com:Nan0Scho1ar/bish"
-askclone "gitmanage" "git@github.com:Nan0Scho1ar/gitmanage"
+askclone "gitmanage" "git@github.com:Nan0Scho1ar/gitmanager"
 
 cd ~
 
