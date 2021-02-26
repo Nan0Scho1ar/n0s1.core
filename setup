@@ -259,6 +259,7 @@ elif [ $NANOS_DISTRO = "Ubuntu" ]; then
         tryaptinstall youtube-viewer
         tryaptinstall zathura
         tryaptinstall bat
+        tryaptinstall tmux
 
         tryaptinstall minecraft-launcher
         tryaptinstall neovim
@@ -268,7 +269,6 @@ elif [ $NANOS_DISTRO = "Ubuntu" ]; then
         tryaptinstall postman
     fi
     ###TODO Install Rider
-
 
     #fd is already used on Ubuntu
     [ -f ~/.local/bin/fd ] && ask "Link fdfind to fd (ubuntu fix)" && ln -s $(which fdfind) ~/.local/bin/fd
@@ -288,14 +288,6 @@ asklink ".zshenv" "/home/nan0scho1ar/dotfiles/.zshenv" "/home/nan0scho1ar/.zshen
 asklink ".tmux.conf" "/home/nan0scho1ar/dotfiles/.tmux.conf" "/home/nan0scho1ar/.tmux.conf"
 askrecursivelinkdir ".config" "/home/nan0scho1ar/dotfiles/.config" "/home/nan0scho1ar/.config"
 asklinksudo "/etc/hosts" "/home/nan0scho1ar/dotfiles/linux/hosts" "/etc/hosts"
-
-# Create symlinks
-#if ask "link .xmonad"; then
-    #if [ -d ~/.xmonad ]; then
-    #fi
-    #mkdir ~/.xmonad
-    #ln ~/dotfiles/.xmonad/xmonad.hs ~/.xmonad/xmonad.hs
-
 
 # Setup vim/nvim
 ## vim
