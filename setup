@@ -268,6 +268,7 @@ elif [ $NANOS_DISTRO = "Ubuntu" ]; then
         tryaptinstall vim
         tryaptinstall neovim
         tryaptinstall nodejs
+        tryaptinstall zsh
 
         tryaptinstall fd-find
         #fd is already used on Ubuntu
