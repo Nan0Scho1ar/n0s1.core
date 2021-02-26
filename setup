@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Script to init arch/ubuntu/windows_10 systems to nanOS
 
 # Add colour vars
