@@ -210,13 +210,12 @@ ask "Setup ssh" && setup_ssh
 
 echo ${blue}Git repos${reset}
 # Clone repos
+
+mkdir -p "$NANOS_REPOS_DIR"
+cd $NANOS_REPOS_DIR
 askclone "dotfiles" "git@bitbucket.org:Nan0Scho1ar/dotfiles.git"
 askclone "scripts" "git@bitbucket.org:Nan0Scho1ar/scripts.git"
 askclone "vimwiki" "git@bitbucket.org:Nan0Scho1ar/vimwiki.git"
-
-echo $NANOS_REPOS_DIR
-mkdir -p "$NANOS_REPOS_DIR"
-cd $NANOS_REPOS_DIR
 askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
 askclone "bish" "git@github.com:Nan0Scho1ar/bish"
 askclone "gitmanager" "git@github.com:Nan0Scho1ar/gitmanager"
@@ -296,30 +295,29 @@ fi
 echo ${blue}Link files${reset}
 
 #asklinksudo "/etc/update-motd.d/10-help-text" "/home/nan0scho1ar/dotfiles/linux/99-banner" "/etc/update-motd.d/99-banner"
-asklink ".bashrc" "/home/nan0scho1ar/dotfiles/.bashrc" "/home/nan0scho1ar/.bashrc"
-asklink ".profile" "/home/nan0scho1ar/dotfiles/.profile" "/home/nan0scho1ar/.profile"
-asklink ".vimrc" "/home/nan0scho1ar/dotfiles/.vimrc" "/home/nan0scho1ar/.vimrc"
-asklink ".xprofile" "/home/nan0scho1ar/dotfiles/.xprofile" "/home/nan0scho1ar/.xprofile"
-asklink ".zshenv" "/home/nan0scho1ar/dotfiles/.zshenv" "/home/nan0scho1ar/.zshenv"
-asklink ".tmux.conf" "/home/nan0scho1ar/dotfiles/.tmux.conf" "/home/nan0scho1ar/.tmux.conf"
-askrecursivelinkdir ".config" "/home/nan0scho1ar/dotfiles/.config" "/home/nan0scho1ar/.config"
-asklinksudo "/etc/hosts" "/home/nan0scho1ar/dotfiles/linux/hosts" "/etc/hosts"
+#asklink ".bashrc" "/home/nan0scho1ar/dotfiles/.bashrc" "/home/nan0scho1ar/.bashrc"
+asklink ".profile" "$NANOS_REPOS_DIR/dotfiles/.profile" "$HOME/.profile"
+#asklink ".vimrc" "/home/nan0scho1ar/dotfiles/.vimrc" "/home/nan0scho1ar/.vimrc"
+asklink ".xprofile" "$NANOS_REPOS_DIR/dotfiles/.xprofile" "$HOME/.xprofile"
+asklink ".zshenv" "$NANOS_REPOS_DIR/dotfiles/.zshenv" "$HOME/.zshenv"
+#asklink ".tmux.conf" "/home/nan0scho1ar/dotfiles/.tmux.conf" "/home/nan0scho1ar/.tmux.conf"
+askrecursivelinkdir ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
+asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
 
+source $HOME/.profile
 echo ${blue}Vim plugins${reset}
-# Setup vim/nvim
-## vim
-if [ -f "$HOME/.vim/autoload/plug.vim" ] && [ -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
+#Setup vim/nvim
+if [ -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ] && [ -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
     echo "${green}vimplug already installed${reset}"
 elif ask "Install vim/nvim plugins"; then
     if [ $NANOS_NAME = "linux" ]; then
-	if [ ! -f "$HOME/.vim/autoload/plug.vim" ]; then
-	    echo "$HOME/.vim/autoload/plug.vim not found. Downloading..."
+	if [ ! -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ]; then
+	    echo "$XDG_DATA_HOME/vim/autoload/plug.vim not found. Downloading..."
         curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
             https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
         vim -E -s +PlugInstall +visual +qall
 	fi
 
-    source $HOME/.bashrc
 
 	if [ ! -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
         echo "$HOME/.config/nvim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
