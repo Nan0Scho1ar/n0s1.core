@@ -47,9 +47,9 @@ tryaurinstall() {
     fi
 }
 
-tryaptinstall() { 
+tryaptinstall() {
     dpkg-query -W -f='${Status}' $1 2>/dev/null | grep -q "install ok installed" && echo "${green}$1${reset} is already installed" && return
-    ask "${magenta}$1${reset} is not installed, would you like to install it" && sudo apt-get --yes install $1 
+    ask "${magenta}$1${reset} is not installed, would you like to install it" && sudo apt-get --yes install $1
 }
 
 wait_any_key() { read -n 1 -s -r -p "Press any key to continue"; }
@@ -246,7 +246,7 @@ fi
 ## Arch
 if [ $NANOS_DISTRO = "Arch" ]; then
     ### Pacman
-    trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy steam code youtube-dl mpv youtube-viewer zathura yay
+    trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs
 
     ### AUR
     tryaurinstall --prompt minecraft-launcher
@@ -273,6 +273,9 @@ elif [ $NANOS_DISTRO = "Ubuntu" ]; then
         tryaptinstall zathura
         tryaptinstall tmux
         tryaptinstall curl
+        tryaptinstall vim
+        tryaptinstall neovim
+        tryaptinstall nodejs
 
         #Bat is not in standard repos because reasons
 	if dpkg-query -W -f='${Status}' bat | grep -q "install ok installed"; then
@@ -318,7 +321,7 @@ asklinksudo "/etc/hosts" "/home/nan0scho1ar/dotfiles/linux/hosts" "/etc/hosts"
 echo ${blue}Vim plugins${reset}
 # Setup vim/nvim
 ## vim
-if [ -f "$HOME/.vim/autoload/plug.vim" ] && [ -f "$HOME/.config/nvim/site/autoload/plug.vim" ]; then
+if [ -f "$HOME/.vim/autoload/plug.vim" ] && [ -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
     echo "${green}vimplug already installed${reset}"
 elif ask "Install vim/nvim plugins"; then
     if [ $NANOS_NAME = "linux" ]; then
@@ -329,12 +332,9 @@ elif ask "Install vim/nvim plugins"; then
 	    ls "$HOME/.vim/autoload"
 	fi
 
-        mkdir -p "$HOME/.config/nvim/site/autoload"
-	if [ ! -f "$HOME/.config/nvim/site/autoload/plug.vim" ]; then
-	    echo "$HOME/.config/nvim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
-            cp "$HOME/.vim/autoload/plug.vim" "$HOME/.config/nvim/site/autoload/plug.vim"
-            nvim -E -s +PlugInstall +visual +qall
-	    ls "$HOME/.config/nvim/site/autoload/"
+	if [ ! -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
+        sh -c 'curl -fLo "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" --create-dirs \
+       https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
 	fi
     fi
 fi
