@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Script to init arch/ubuntu/windows_10 systems to nanOS
 
 # Add colour vars
@@ -23,28 +23,28 @@ fi
 
 trypacmaninstall() {
     pkgs=`echo $@ | sed "s/--prompt //"`
-    if [[ $1 == "--prompt" ]] && ask "install $pkgs"; then
-        for pkg in $@; do
-            if [[ $pkg == "--prompt" ]]; then continue; fi
-            pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "$pkg@ is already installed" && return
-            #Idk if this check works properly
-            pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "$pkg@ is already installed" && return
-            echo "${red}Installing $pkg@${reset}" && pacman -S $pkg@;
-        done
-    fi
+    for pkg in $pkgs; do
+        pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "$pkg is already installed" && return
+        #Idk if this check works properly
+        pacman -Qg "$pkg" 1>/dev/null 2>/dev/null && echo "$pkg is already installed" && return
+        if [[ $1 == "--prompt" ]]; then
+            ask "install $pkg" || return
+        fi
+        echo "${red}Installing $pkg@${reset}" && pacman -S $pkg@;
+    done
 }
 
 tryaurinstall() {
     pkgs=`echo $@ | sed "s/--prompt //"`
-    if [[ $1 == "--prompt" ]] && ask "install $pkgs"; then
-        for pkg in $@; do
-            if [[ $pkg == "--prompt" ]]; then continue; fi
-            pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "$pkg@ is already installed" && return
-            #Idk if this check works properly
-            pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "$pkg@ is already installed" && return
-            echo "${red}Installing $pkg@${reset}" && yay -S $pkg@;
-        done
-    fi
+    for pkg in $pkgs; do
+        pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "$pkg is already installed" && return
+        #Idk if this check works properly
+        pacman -Qg "$pkg" 1>/dev/null 2>/dev/null && echo "$pkg is already installed" && return
+        if [[ $1 == "--prompt" ]]; then
+            ask "install $pkg" || return
+        fi
+        echo "${red}Installing $pkg@${reset}" && yay -S $pkg@;
+    done
 }
 
 tryaptinstall() { echo "${magenta}Installing $1${reset}" && sudo apt install "$1"; }

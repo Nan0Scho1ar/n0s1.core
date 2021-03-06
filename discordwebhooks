@@ -4,13 +4,13 @@
 # Created: 17/10/2020
 # License: MIT License
 
-save() { read -p "Enter $1: " r1; read -p "Enter $2: " r2; echo "$r1~|~$r2" >> $3; }
+save() { read -p "Enter $1: " r1; read -p "Enter $2: " r2; echo "$r1|$r2" >> $3; }
 delete() { sed -i $(cat -n $1 | fzf --with-nth 2.. | awk '{print $1"d"}') $1; }
 
 mkdir -p ~/.config/discordwebhooks/;
 if [ -z $1 ]; then
-    IFS='~|~' read -r username avatar_url <<< $(cat $HOME/.config/discordwebhooks/users.bm | fzf)
-    IFS='~|~' read -r channel_name webhook_url <<< $(cat $HOME/.config/discordwebhooks/channels.bm | fzf)
+    IFS='|' read -r username avatar_url <<< $(cat $HOME/.config/discordwebhooks/users.bm | fzf)
+    IFS='|' read -r channel_name webhook_url <<< $(cat $HOME/.config/discordwebhooks/channels.bm | fzf)
     echo "Enter message to post in $channel_name:"
     while true; do
         read -p "> " msg || exit 1
