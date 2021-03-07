@@ -1,0 +1,38 @@
+#!/bin/bash
+
+hideinput()
+{
+  if [ -t 0 ]; then
+     echo "Is tty"
+     save_state=$(stty -g)
+     stty -echo -icanon time 0 min 0
+     echo -ne "\e[?1049h\r" 1>&2;
+  else
+    echo "is not tty"
+  fi
+}
+
+cleanup()
+{
+  if [ -t 0 ]; then
+    stty "$save_state"
+    echo -ne "\e[?1049l" 1>&2;
+    echo "exit tty"
+  else
+    echo "is not tty"
+  fi
+}
+
+trap 'cleanup < /dev/tty' EXIT
+trap 'hideinput < /dev/tty' CONT
+hideinput
+
+input="$(< /dev/stdin)";
+echo "$input"
+while true;
+do
+  read -r -sn1 < /dev/tty;
+  read -r -sn3 -t 0.001 k1 < /dev/tty;
+  REPLY+=$k1;
+  echo $REPLY
+done

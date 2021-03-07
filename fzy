@@ -4,37 +4,85 @@
 # Author: Nan0Scho1ar (Christopher Mackinga)
 # License: MIT License
 
-input="$(< /dev/stdin)"; height="$(tput lines)"; inum=$(echo "$input" | wc -l)
-echo -ne "\e[?1049h\r" 1>&2; row=1; col=1; str=""; cur=1; fnum=$inum; regex=""; regex2=""
-while true; do
-    range="$row,$((row+height-3))p;$((row+height-3))q"
-    filtered=$(echo "$input" | grep ".*$regex" | sed -n $range 2>/dev/null | sed -e 's/^.*/  &/');
-    frange="$(echo "$filtered" | wc -l)"
-    curpos=$((frange-cur+1))
-    echo "$filtered" | cut -c$col- | grep -E --color=always "$regex2" | tac | sed $curpos's/^  \(.*\)/> \1/' 1>&2
-    echo "  $fnum/$inum" 1>&2 && read -r -p "> $str" -n 1 -s < /dev/tty && read -r -sn3 -t 0.001 k1 < /dev/tty; REPLY+=$k1;
+hideinput()
+{
+    if [ -t 0 ]; then
+        save_state=$(stty -g)
+        stty -echo -icanon time 0 min 0
+        echo -ne "\e[?1049h\r" 1>&2;
+    fi
+}
+
+cleanup()
+{
+    if [ -t 0 ]; then
+        stty "$save_state" < /dev/tty
+        echo -ne "\e[?1049l" 1>&2;
+        echo "$result"
+    fi
+}
+
+trap 'cleanup < /dev/tty' < /dev/tty EXIT
+trap hideinput CONT
+hideinput < /dev/tty
+
+input="$(< /dev/stdin)";
+height="$(tput lines)";
+inum=$(echo "$input" | wc -l);
+fnum=$inum;
+clearline=$(echo -e "\033[2K")
+valid='0-9a-zA-Z'
+row=1;
+col=1;
+cur=1;
+str="";
+regex="";
+regex2="";
+result="";
+while true;
+do
+    range="$row,$((row+height-3))p;$((row+height-3))q";
+    filtered=$(echo "$input" | grep ".*$regex" | sed -n $range 2>/dev/null | sed -e "s/^.*/  &/");
+    frange="$(echo "$filtered" | wc -l)";
+    curpos=$((frange-cur+1));
+    echo "$filtered" | cut -c$col- | grep -E --color=always "$regex2" | tac | sed -e $curpos"s/^  \(.*\)/> \1/;s/^.*/$clearline&/" 1>&2;
+    echo "$clearline  $fnum/$inum" 1>&2;
+    read -r -p "$clearline> $str" -sn1 < /dev/tty;
+    read -r -sn3 -t 0.001 k1 < /dev/tty;
+    REPLY+=$k1;
     case "$REPLY" in
-        '') echo -ne "\e[?1049l" 1>&2; echo "$filtered" | sed -n "${cur}s/  //p;${cur}q;" && exit;;
-        $'\e[C'|$'\e0C') col=$((col+1));;
-        $'\e[D'|$'\e0D') [[ $col -gt 1 ]] && col=$((col-1));;
-        $'\e[B'|$'\e0B') [[ $cur -ge 1 ]] && cur=$((cur-1));;
-        $'\e[A'|$'\e0A') [[ $cur -le $fnum ]] && cur=$((cur+1));;
-        $'\e[1~'|$'\e0H'|$'\e[H') row=1;;
-        $'\e[4~'|$'\e0F'|$'\e[F') row=$fnum;;
+        '')
+            result=$(echo "$filtered" | sed -n "${cur}s/  //p;${cur}q");
+            exit;
+            ;;
+        $'\e[C'|$'\e0C') col=$((col+1)) ;;
+        $'\e[D'|$'\e0D') [[ $col -gt 1 ]] && col=$((col-1)) ;;
+        $'\e[B'|$'\e0B') [[ $cur -ge 1 ]] && cur=$((cur-1)) ;;
+        $'\e[A'|$'\e0A') [[ $cur -le $fnum ]] && cur=$((cur+1)) ;;
+        $'\e[1~'|$'\e0H'|$'\e[H') row=1 ;;
+        $'\e[4~'|$'\e0F'|$'\e[F') row=$fnum ;;
         *)
-            char=$(echo "$REPLY" | hexdump -c | awk '{ print $2 }');
-            if [[ $char = "033" ]]; then echo -e "\e[?1049l" 1>&2 && exit 1;
-            elif [[ $char = "177" ]] && [[ ${#str} -gt 0 ]]; then str="${str::-1}";
-            else str="$str$REPLY" && row=1; fi
+            char=$(echo "$REPLY" | hexdump -c | tr -d '[:space:]');
+            if [[ $char = "0000000033\n0000002" ]]; then
+                exit 1;
+            elif [[ $char = "0000000177\n0000002" ]] && [[ ${#str} -gt 0 ]]; then
+                str="${str::-1}";
+            else
+                filtchar=$(echo "$REPLY" | hexdump -c | awk '{ print $2 }')
+                if [[ "$filtchar" != "033" ]] && [[ "$filtchar" != "177" ]] && [[ ! "$REPLY"  =~ [^$valid] ]]; then
+                    str="$str$REPLY" && row=1;
+                fi
+            fi
             regex=$(echo "$str" | sed "s/\(.\)/\1.*/g");
             regex2=$(echo "$str" | sed "s/\(.\)/\1|/g");
-            fnum=$(echo "$input" | grep -c ".*$regex")
-        ;;
+            fnum=$(echo "$input" | grep -c ".*$regex");
+            ;;
     esac
     [[ $((frange-cur+1)) -lt 1 ]] && row=$((row+1)) && cur=$((cur-1));
     [[ $cur -lt 1 ]] && row=$((row-1)) && cur=$((cur+1));
     [[ $cur -gt $fnum ]] && cur=$fnum;
-    [[ $((row-fnum+frange)) -gt 1 ]] && row=$((row-1))
+    [[ $((row-fnum+frange)) -gt 1 ]] && row=$((row-1));
     [[ $row -lt 1 ]] && row=1;
-    yes '' | sed "${height}q" 1>&2;
+    tput cup 0 0
+    [[ $fnum -lt $height ]] && yes "$clearline" | sed "$((height-fnum))q" 1>&2;
 done
