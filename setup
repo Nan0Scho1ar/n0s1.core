@@ -94,15 +94,18 @@ askrecursivelinkdir() {
 		done
 		for file in $(find "$2" -type f | sed "s|$2/*||"); do
 		    if [ "$(readlink -- $3/$file)" = "$2/$file" ]; then
-			echo "${green}$1${reset} already linked correctly"
-			continue
-		    elif [ -f "$3/$file" ]; then
-			if [ "$(diff -q "$2/$file" "$3/$file")" != "" ]; then
-			    ask "${magenta}$3/$file${reset} already exists and is not identical. Show diff" && diff -q "$2/$file" "$3/$file"
-			    ask "Remove ${red}$3/$file${reset}" && rm "$3/$file"
-			else
-			    rm "$3/$file"
-			fi
+                echo "${green}$1${reset} already linked correctly"
+                continue
+            elif [ ! -z "$3/$file" ]; then
+                if [ "$(diff -q "$2/$file" "$3/$file")" != "" ]; then
+                    ask "${magenta}$3/$file${reset} already exists and is not identical. Show diff" &&
+                        diff -q "$2/$file" "$3/$file"
+                    ask "Remove ${red}$3/$file${reset}" && rm "$3/$file"
+                else
+                    rm "$3/$file"
+                fi
+            else
+                echo "File does not exist"
 		    fi
 		    echo "Linking ${magenta}$file${reset}"
 		    ln -s "$2/$file" "$3/$file"
@@ -244,25 +247,24 @@ fi
 # Install packages
 ## Arch
 if [ $NANOS_DISTRO = "Arch" ]; then
+    if ask "install packages"; then
     ### Pacman
-    trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn
-
-    ### AUR
-    if ask "Askinstall extra"; then
-        tryaurinstall --prompt minecraft-launcher
-        tryaurinstall --prompt pandoc
-        tryaurinstall --prompt texlive-most
-        tryaurinstall --prompt postman
-        tryaurinstall --prompt rider
+        trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn
+        ### AUR
+        if ask "Askinstall extra"; then
+            tryaurinstall --prompt minecraft-launcher
+            tryaurinstall --prompt pandoc
+            tryaurinstall --prompt texlive-most
+            tryaurinstall --prompt postman
+            tryaurinstall --prompt rider
+        fi
+        if ask "Install rust toolchain"; then
+            trypacmaninstall rustup
+            rustup install stable
+            rustup default stable
+            rustup component add rls rust-analysis rust-src
+        fi
     fi
-    if ask "Install rust toolchain"; then
-        trypacmaninstall rustup
-        rustup install stable
-        rustup default stable
-        rustup component add rls rust-analysis rust-src
-    fi
-
-
 ## Ubuntu
 elif [ $NANOS_DISTRO = "Ubuntu" ]; then
     if ask "Install packages"; then
