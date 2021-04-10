@@ -245,14 +245,22 @@ fi
 ## Arch
 if [ $NANOS_DISTRO = "Arch" ]; then
     ### Pacman
-    trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs
+    trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn
 
     ### AUR
-    tryaurinstall --prompt minecraft-launcher
-    tryaurinstall --prompt pandoc
-    tryaurinstall --prompt texlive-most
-    tryaurinstall --prompt postman
-    ###TODO Install Rider
+    if ask "Askinstall extra"; then
+        tryaurinstall --prompt minecraft-launcher
+        tryaurinstall --prompt pandoc
+        tryaurinstall --prompt texlive-most
+        tryaurinstall --prompt postman
+        tryaurinstall --prompt rider
+    fi
+    if ask "Install rust toolchain"; then
+        trypacmaninstall rustup
+        rustup install stable
+        rustup default stable
+        rustup component add rls rust-analysis rust-src
+    fi
 
 
 ## Ubuntu
