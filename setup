@@ -24,26 +24,26 @@ fi
 trypacmaninstall() {
     pkgs=`echo $@ | sed "s/--prompt //"`
     for pkg in $pkgs; do
-        pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && return
+        pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
         #Idk if this check works properly
-        pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && return
+        pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
         if [[ $1 == "--prompt" ]]; then
             ask "install $pkg" || return
         fi
-        echo "${red}Installing $pkg@${reset}" && pacman -S $pkg@;
+        echo "${red}Installing $pkg${reset}" && sudo pacman -S $pkg;
     done
 }
 
 tryaurinstall() {
     pkgs=`echo $@ | sed "s/--prompt //"`
     for pkg in $pkgs; do
-        pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && return
+        pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
         #Idk if this check works properly
-        pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "${gree}$pkg${reset} is already installed" && return
+        pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "${gree}$pkg${reset} is already installed" && continue
         if [[ $1 == "--prompt" ]]; then
             ask "install $pkg" || return
         fi
-        echo "${red}Installing $pkg@${reset}" && yay -S $pkg@;
+        echo "${red}Installing $pkg${reset}" && yay -S $pkg;
     done
 }
 
@@ -231,9 +231,6 @@ if [ $NANOS_DISTRO = "Arch" ]; then
     if ask "Upgrade packages"; then
         sudo pacman -Syu
         yay -Syu
-    else
-        sudo pacman -Sy
-        yay -Sy
     fi
 elif [ $NANOS_DISTRO = "Ubuntu" ]; then
     sudo apt update
@@ -248,10 +245,12 @@ fi
 ## Arch
 if [ $NANOS_DISTRO = "Arch" ]; then
     if ask "install packages"; then
-    ### Pacman
+        sudo pacman -Sy
+        ### Pacman
         trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn ttf-jetbrains-mono alacritty emacs
         ### AUR
         if ask "Askinstall extra"; then
+            yay -Sy
             tryaurinstall --prompt minecraft-launcher
             tryaurinstall --prompt pandoc
             tryaurinstall --prompt texlive-most
@@ -260,9 +259,9 @@ if [ $NANOS_DISTRO = "Arch" ]; then
         fi
         if ask "Install rust toolchain"; then
             trypacmaninstall rustup
-            rustup install stable
-            rustup default stable
-            rustup component add rls rust-analysis rust-src
+            sudo rustup install stable
+            sudo rustup default stable
+            sudo rustup component add rls rust-analysis rust-src
         fi
     fi
 ## Ubuntu
@@ -305,12 +304,12 @@ fi
 echo ${blue}Link files${reset}
 
 #asklinksudo "/etc/update-motd.d/10-help-text" "/home/nan0scho1ar/dotfiles/linux/99-banner" "/etc/update-motd.d/99-banner"
-#asklink ".bashrc" "/home/nan0scho1ar/dotfiles/.bashrc" "/home/nan0scho1ar/.bashrc"
+asklink ".bashrc" "$NANOS_REPOS_DIR/dotfiles/.bashrc" "/home/nan0scho1ar/.bashrc"
 asklink ".profile" "$NANOS_REPOS_DIR/dotfiles/.profile" "$HOME/.profile"
-#asklink ".vimrc" "/home/nan0scho1ar/dotfiles/.vimrc" "/home/nan0scho1ar/.vimrc"
+asklink ".vimrc" "$NANOS_REPOS_DIR/dotfiles/.vimrc" "/home/nan0scho1ar/.vimrc"
 asklink ".xprofile" "$NANOS_REPOS_DIR/dotfiles/.xprofile" "$HOME/.xprofile"
 asklink ".zshenv" "$NANOS_REPOS_DIR/dotfiles/.zshenv" "$HOME/.zshenv"
-#asklink ".tmux.conf" "/home/nan0scho1ar/dotfiles/.tmux.conf" "/home/nan0scho1ar/.tmux.conf"
+asklink ".tmux.conf" "$NANOS_REPOS_DIR/dotfiles/.tmux.conf" "/home/nan0scho1ar/.tmux.conf"
 askrecursivelinkdir ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
 asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
 
@@ -321,19 +320,19 @@ if [ -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ] && [ -f "$XDG_DATA_HOME/nvim/si
     echo "${green}vimplug already installed${reset}"
 elif ask "Install vim/nvim plugins"; then
     if [ $NANOS_NAME = "linux" ]; then
-	if [ ! -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ]; then
-	    echo "$XDG_DATA_HOME/vim/autoload/plug.vim not found. Downloading..."
-        curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
-            https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-        vim -E -s +PlugInstall +visual +qall
-	fi
+        if [ ! -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ]; then
+            echo "$XDG_DATA_HOME/vim/autoload/plug.vim not found. Downloading..."
+            curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
+                https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+            vim -E -s +PlugInstall +visual +qall
+        fi
 
 
-	if [ ! -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
-        echo "$HOME/.config/nvim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
-        curl -fLo "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" --create-dirs \
-            https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-	fi
+        if [ ! -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
+            echo "$HOME/.config/nvim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
+            curl -fLo "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" --create-dirs \
+                https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+        fi
     fi
 fi
 
