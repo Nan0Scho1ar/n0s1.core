@@ -249,7 +249,7 @@ fi
 if [ $NANOS_DISTRO = "Arch" ]; then
     if ask "install packages"; then
     ### Pacman
-        trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn
+        trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn ttf-jetbrains-mono alacritty emacs
         ### AUR
         if ask "Askinstall extra"; then
             tryaurinstall --prompt minecraft-launcher
