@@ -338,6 +338,13 @@ elif ask "Install vim/nvim plugins"; then
     fi
 fi
 
+if [ -d "$HOME/.tmux/plugins" ];then
+    echo "tmux plugin manager (tpm) already installed"
+elif ask "Install tmux plugin manager"; then
+    mkdir -p $HOME/.tmux/plugins/
+    git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+fi
+
 #echo ${blue}Git settings${reset}
 ##Git settings
 #if [ "$(git config --get pull.rebase)" = false ] &&
