@@ -26,11 +26,11 @@ trypacmaninstall() {
     for pkg in $pkgs; do
         pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
         #Idk if this check works properly
-        pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
+        pacman -Qg  "$pkg@" 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
         if [[ $1 == "--prompt" ]]; then
             ask "install $pkg" || return
         fi
-        echo "${red}Installing $pkg${reset}" && sudo pacman -S $pkg;
+        echo "${red}Installing $pkg${reset}" && sudo pacman -S --noconfirm $pkg;
     done
 }
 
@@ -244,7 +244,7 @@ fi
 # Install packages
 ## Arch
 if [ $NANOS_DISTRO = "Arch" ]; then
-    if ask "install packages"; then
+    if ask "Install packages"; then
         sudo pacman -Sy
         ### Pacman
         trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy \
@@ -314,6 +314,8 @@ asklink ".zshenv" "$NANOS_REPOS_DIR/dotfiles/.zshenv" "$HOME/.zshenv"
 asklink ".tmux.conf" "$NANOS_REPOS_DIR/dotfiles/.tmux.conf" "/home/nan0scho1ar/.tmux.conf"
 askrecursivelinkdir ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
 asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
+
+mkdir -p $HOME/.config/z/
 
 source $HOME/.profile
 echo ${blue}Vim plugins${reset}
