@@ -26,11 +26,11 @@ trypacmaninstall() {
     for pkg in $pkgs; do
         pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
         #Idk if this check works properly
-        pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
+        pacman -Qg  "$pkg@" 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
         if [[ $1 == "--prompt" ]]; then
-            ask "install $pkg" || return
+            ask "install $pkg" || continue
         fi
-        echo "${red}Installing $pkg${reset}" && sudo pacman -S $pkg;
+        echo "${red}Installing $pkg${reset}" && sudo pacman -S --noconfirm $pkg;
     done
 }
 
@@ -41,7 +41,7 @@ tryaurinstall() {
         #Idk if this check works properly
         pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "${gree}$pkg${reset} is already installed" && continue
         if [[ $1 == "--prompt" ]]; then
-            ask "install $pkg" || return
+            ask "install $pkg" || continue
         fi
         echo "${red}Installing $pkg${reset}" && yay -S $pkg;
     done
@@ -197,7 +197,7 @@ detect_os() {
     if [ $NANOS_NAME = "linux" ]; then
         NANOS_REPOS_DIR="$HOME/repos"
     elif [ $NANOS_NAME = "windows" ]; then
-        NANOS_REPOS_DIR="~/source/repos"
+        NANOS_REPOS_DIR="$HOME/repos"
     fi
 }
 
@@ -205,7 +205,7 @@ detect_os() {
 # BEGIN
 
 detect_os
-cd ~
+cd $HOME
 
 echo ${blue}SSH Keys${reset}
 # Setup ssh
@@ -222,8 +222,9 @@ askclone "vimwiki" "git@bitbucket.org:Nan0Scho1ar/vimwiki.git"
 askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
 askclone "bish" "git@github.com:Nan0Scho1ar/bish"
 askclone "gitmanager" "git@github.com:Nan0Scho1ar/gitmanager"
+askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
 
-cd ~
+cd $HOME
 echo ${blue}System Packages${reset}
 
 # Update system
@@ -244,7 +245,7 @@ fi
 # Install packages
 ## Arch
 if [ $NANOS_DISTRO = "Arch" ]; then
-    if ask "install packages"; then
+    if ask "Install packages"; then
         sudo pacman -Sy
         ### Pacman
         trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy \
@@ -315,6 +316,8 @@ asklink ".tmux.conf" "$NANOS_REPOS_DIR/dotfiles/.tmux.conf" "/home/nan0scho1ar/.
 askrecursivelinkdir ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
 asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
 
+mkdir -p $HOME/.config/z/
+
 source $HOME/.profile
 echo ${blue}Vim plugins${reset}
 #Setup vim/nvim
@@ -324,7 +327,7 @@ elif ask "Install vim/nvim plugins"; then
     if [ $NANOS_NAME = "linux" ]; then
         if [ ! -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ]; then
             echo "$XDG_DATA_HOME/vim/autoload/plug.vim not found. Downloading..."
-            curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
+            curl -fLo $HOME/.vim/autoload/plug.vim --create-dirs \
                 https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
             vim -E -s +PlugInstall +visual +qall
         fi
