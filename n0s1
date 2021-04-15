@@ -1,0 +1,100 @@
+#!/bin/bash
+
+green=`tput setaf 2`
+red=`tput setaf 1`
+yellow=`tput setaf 3`
+blue=`tput setaf 4`
+magenta=`tput setaf 5`
+cyan=`tput setaf 6`
+white=`tput setaf 7`
+blink=`tput blink`
+reset=`tput sgr0`
+
+nan0S() {
+    echo '                    ___  ____  '
+    echo ' _ __   __ _ _ __  / _ \/ ___| '
+    echo '| `_ \ / _` | `_ \| | | \___ \ '
+    echo '| | | | (_| | | | | |_| |___) |'
+    echo '|_| |_|\__,_|_| |_|\___/|____/ '
+}
+
+n0s1() {
+    echo '       /\     /\        '
+    echo '      /  \   /  \       '
+    echo '     / /\ \ / /\ \      '
+    echo '    / /  \ X /  \ \     '
+    echo '   / /    X X    \ \    '
+    echo '  / /    / X \    \ \   '
+    echo ' / /    /_/_\_\    \ \  '
+    echo '/_/______/___\      \ \ '
+    echo ' /      /____________\_\'
+    echo '/_____________________\ '
+}
+
+n0s1_large() {
+    echo '              /\           /\                '
+    echo '             /  \         /  \               '
+    echo '            /    \       /    \              '
+    echo '           /      \     /      \             '
+    echo '          /   /\   \   /   /\   \            '
+    echo '         /   /  \   \ /   /  \   \           '
+    echo '        /   /    \   X   /    \   \          '
+    echo '       /   /      \ / \ /      \   \         '
+    echo '      /   /        X   X        \   \        '
+    echo '     /   /        / \ / \        \   \       '
+    echo '    /   /        /   X   \        \   \      '
+    echo '   /   /        /   / \   \        \   \     '
+    echo '  /   /        /___/___\___\        \   \    '
+    echo ' /   /            /     \            \   \   '
+    echo '/___/____________/_______\            \   \  '
+    echo '   /            /                      \   \ '
+    echo '  /            /________________________\___\'
+    echo ' /                                       \   '
+    echo '/_________________________________________\  '
+}
+
+usegreen=0
+centered=0
+large=0
+banner=0
+
+while getopts "gclb" OPT; do
+    if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
+      OPT="${OPTARG%%=*}"       # extract long option name
+      OPTARG="${OPTARG#$OPT}"   # extract long option argument (may be empty)
+      OPTARG="${OPTARG#=}"      # if long option argument, remove assigning `=`
+    fi
+    case "$OPT" in
+        g) usegreen=1 ;;
+        c) centered=1 ;;
+        l) large=1 ;;
+        b) banner=1 ;;
+        ??*) die "Illegal option --$OPT" ;;  # bad long option
+        ?) exit 2 ;;  # bad short option (error reported via getopts)
+  esac
+done
+shift $((OPTIND-1)) # remove parsed options and args from $@ list
+
+if [ $large = 1 ]; then
+    text="$(n0s1_large)"
+else
+    text="$(n0s1)"
+fi
+
+
+if [ $usegreen = 1 ]; then
+    text="${green}
+${text}
+${reset}"
+fi
+
+if [ $banner = 1 ]; then
+    text="${text}
+$(nan0S)"
+fi
+
+if [ $centered = 1 ]; then
+    echo "${text}" | center
+else
+    echo "${text}"
+fi
