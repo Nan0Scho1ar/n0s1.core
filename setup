@@ -28,7 +28,7 @@ trypacmaninstall() {
         #Idk if this check works properly
         pacman -Qg  "$pkg@" 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
         if [[ $1 == "--prompt" ]]; then
-            ask "install $pkg" || return
+            ask "install $pkg" || continue
         fi
         echo "${red}Installing $pkg${reset}" && sudo pacman -S --noconfirm $pkg;
     done
@@ -41,7 +41,7 @@ tryaurinstall() {
         #Idk if this check works properly
         pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "${gree}$pkg${reset} is already installed" && continue
         if [[ $1 == "--prompt" ]]; then
-            ask "install $pkg" || return
+            ask "install $pkg" || continue
         fi
         echo "${red}Installing $pkg${reset}" && yay -S $pkg;
     done
