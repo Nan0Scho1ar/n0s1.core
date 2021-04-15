@@ -197,7 +197,7 @@ detect_os() {
     if [ $NANOS_NAME = "linux" ]; then
         NANOS_REPOS_DIR="$HOME/repos"
     elif [ $NANOS_NAME = "windows" ]; then
-        NANOS_REPOS_DIR="~/source/repos"
+        NANOS_REPOS_DIR="$HOME/source/repos"
     fi
 }
 
@@ -205,7 +205,7 @@ detect_os() {
 # BEGIN
 
 detect_os
-cd ~
+cd $HOME
 
 echo ${blue}SSH Keys${reset}
 # Setup ssh
@@ -223,7 +223,7 @@ askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
 askclone "bish" "git@github.com:Nan0Scho1ar/bish"
 askclone "gitmanager" "git@github.com:Nan0Scho1ar/gitmanager"
 
-cd ~
+cd $HOME
 echo ${blue}System Packages${reset}
 
 # Update system
@@ -324,7 +324,7 @@ elif ask "Install vim/nvim plugins"; then
     if [ $NANOS_NAME = "linux" ]; then
         if [ ! -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ]; then
             echo "$XDG_DATA_HOME/vim/autoload/plug.vim not found. Downloading..."
-            curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
+            curl -fLo $HOME/.vim/autoload/plug.vim --create-dirs \
                 https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
             vim -E -s +PlugInstall +visual +qall
         fi
