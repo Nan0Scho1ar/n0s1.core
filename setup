@@ -247,7 +247,9 @@ if [ $NANOS_DISTRO = "Arch" ]; then
     if ask "install packages"; then
         sudo pacman -Sy
         ### Pacman
-        trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn ttf-jetbrains-mono alacritty emacs
+        trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy \
+            steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn \
+            ttf-jetbrains-mono alacritty emacs python-neovim
         ### AUR
         if ask "Askinstall extra"; then
             yay -Sy
