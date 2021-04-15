@@ -1,0 +1,24 @@
+#!/bin/bash
+#AUTHOR: Nan0Scho1ar
+#License: GPL v3
+#Script for running nested tmux sessions
+
+SESSION="$1"
+CONFIG="$2"
+if [[ $3 =~ (q|quit)$ ]]; then
+    if tmux has-session -t $SESSION 2>/dev/null; then
+        tmux kill-session -t $SESSION 2>/dev/null &&
+            echo "Killed tmux session '$SESSION'" ||
+            echo "Failed to kill tmux session '$SESSION'"
+    else
+        echo "Tmux session '$SESSION' does not exist"
+    fi
+    exit
+fi
+if tmux has-session -t $SESSION 2>/dev/null; then
+    tmux -2 attach-session -t $SESSION 2>/dev/null ||
+    echo "Failed to attach tmux session '$SESSION'"
+    exit
+fi
+tmux -2 new-session -d -s $SESSION $CONFIG
+tmux -2 attach-session -t $SESSION

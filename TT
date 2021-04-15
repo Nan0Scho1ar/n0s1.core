@@ -1,0 +1,6 @@
+#!/bin/bash
+#AUTHOR: Nan0Scho1ar
+#License: GPL v3
+#Script for running precofigured parent in nested tmux sessions
+
+toomuxh system $HOME/repos/dotfiles/tmux/sys.sh $1
