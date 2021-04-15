@@ -197,7 +197,7 @@ detect_os() {
     if [ $NANOS_NAME = "linux" ]; then
         NANOS_REPOS_DIR="$HOME/repos"
     elif [ $NANOS_NAME = "windows" ]; then
-        NANOS_REPOS_DIR="$HOME/source/repos"
+        NANOS_REPOS_DIR="$HOME/repos"
     fi
 }
 
