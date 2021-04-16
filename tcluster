@@ -4,4 +4,4 @@
 #Script for running precofigured child in nested tmux sessions
 
 TMUX= ;
-toomuxh $HOSTNAME $HOME/repos/dotfiles/tmux/cluster.sh $1
+toomuxh ${HOSTNAME}_C $HOME/repos/dotfiles/tmux/cluster.sh $1
