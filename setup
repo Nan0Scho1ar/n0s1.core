@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to init arch/ubuntu/windows_10 systems to nanOS
-
+#{{{ Colours
 # Add colour vars
 if [ -t 1 ] && command -v tput > /dev/null; then
     # see if it supports colors
@@ -19,8 +19,8 @@ if [ -t 1 ] && command -v tput > /dev/null; then
         white="$(tput setaf 7   || echo)"
     fi
 fi
-
-
+#}}}
+#{{{ trypacmaninstall()
 trypacmaninstall() {
     pkgs=`echo $@ | sed "s/--prompt //"`
     for pkg in $pkgs; do
@@ -33,7 +33,8 @@ trypacmaninstall() {
         echo "${red}Installing $pkg${reset}" && sudo pacman -S --noconfirm $pkg;
     done
 }
-
+#}}}
+#{{{ tryaurinstall()
 tryaurinstall() {
     pkgs=`echo $@ | sed "s/--prompt //"`
     for pkg in $pkgs; do
@@ -46,14 +47,17 @@ tryaurinstall() {
         echo "${red}Installing $pkg${reset}" && yay -S $pkg;
     done
 }
-
+#}}}
+#{{{ tryaptinstall()
 tryaptinstall() {
     dpkg-query -W -f='${Status}' $1 2>/dev/null | grep -q "install ok installed" && echo "${green}$1${reset} is already installed" && return
     ask "${magenta}$1${reset} is not installed, would you like to install it" && sudo apt-get --yes install $1
 }
-
+#}}}
+#{{{ wait_any_key()
 wait_any_key() { read -n 1 -s -r -p "Press any key to continue"; }
-
+#}}}
+#{{{ ask()
 #Promts the user to answer a yes/no question.
 #Returns after a single char is entered without hitting return.
 ask() {
@@ -64,7 +68,8 @@ ask() {
         [[ $REPLY =~ ^[Nn]$ ]] && return 1
     done
 }
-
+#}}}
+#{{{ asklink()
 asklink() {
     if [ "$(readlink -- $3)" = $2 ]; then
         echo "${green}$1${reset} already linked correctly"
@@ -77,7 +82,8 @@ asklink() {
         ln -sf "$2" "$3"
     fi
 }
-
+#}}}
+#{{{ askrecursivelinkdir()
 #This is not actually recursive lol
 askrecursivelinkdir() {
     for f in $(find "$2" -type f | sed "s|$2/*||"); do
@@ -117,6 +123,8 @@ askrecursivelinkdir() {
     echo "${green}.config${reset} already linked correctly"
 }
 
+#}}}
+#{{{ asklinksudo()
 asklinksudo() {
     if [ "$(readlink -- $3)" = $2 ]; then
         echo "${green}$1${reset} already linked correctly"
@@ -129,7 +137,8 @@ asklinksudo() {
         sudo ln -sf "$2" "$3"
     fi
 }
-
+#}}}
+#{{{ askclone()
 askclone() {
     if [ -d $1 ]; then
         echo "Directory $1 already exists, skipping..."
@@ -138,7 +147,8 @@ askclone() {
         git clone --recurse-submodules $2
     fi
 }
-
+#}}}
+#{{{ setup_ssh()
 setup_ssh() {
     if [ -d .ssh ]; then
         echo ".ssh directory already exits, continuing...";
@@ -157,207 +167,218 @@ setup_ssh() {
         && sh brave "https://bitbucket.org/account/settings/ssh-keys/" "https://github.com/settings/keys"
     wait_any_key
 }
-
+#}}}
+#{{{ detect_os()
 #Detect OS
 detect_os() {
     case $(uname | tr '[:upper:]' '[:lower:]') in
       linux*)
         export NANOS_NAME=linux
+        distros=$(cat /etc/*-release | sed -n "s/DISTRIB_ID=\(.*\)/\1/p")
+        case $distros in
+            ManjaroLinux) NANOS_DISTRO="Arch" ;;
+            Ubuntu) NANOS_DISTRO="Ubuntu" ;;
+            *)
+                echo "Unrecognized linux distro, please update startup script"
+                exit
+                ;;
+        esac
+        NANOS_REPOS_DIR="$HOME/repos"
         ;;
       darwin*)
         export NANOS_NAME=osx
         ;;
-      msys*)
+      msys*|MINGW64_NT-10.0*)
         export NANOS_NAME=windows
-        ;;
-      MINGW64_NT-10.0*)
-        export NANOS_NAME=windows
+        NANOS_DISTRO="Windows"
+        NANOS_REPOS_DIR="$HOME/repos"
         ;;
       *)
-        export NANOS_NAME=notset
+        echo "Unrecognized OS, please update startup script"
+        exit
         ;;
     esac
-    # TODO Warn if NANOS_NAME = notset
-
-    #Detect distro
-    if [ $NANOS_NAME = "linux" ]; then
-        distros=("Arch" "Ubuntu")
-        select opt in "${distros[@]}"; do
-            NANOS_DISTRO="$opt"
-            break
-        done
-    elif [ $NANOS_NAME = "linux" ]; then
-        NANOS_DISTRO="Windows"
-    else
-        NANOS_DISTRO="N/A"
+}
+#}}}
+#{{{ arch_pkg_setup()
+arch_pkg_setup() {
+    sudo pacman -Sy
+    ### Pacman
+    trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy \
+        steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn \
+        ttf-jetbrains-mono alacritty emacs python-neovim unzip xsel
+    ### AUR
+    if ask "Askinstall extra"; then
+        yay -Sy
+        tryaurinstall --prompt minecraft-launcher
+        tryaurinstall --prompt pandoc
+        tryaurinstall --prompt texlive-most
+        tryaurinstall --prompt postman
+        tryaurinstall --prompt rider
     fi
-
-    #Set repos dir
-    NANOS_REPOS_DIR="$HOME/repos"
-    if [ $NANOS_NAME = "linux" ]; then
-        NANOS_REPOS_DIR="$HOME/repos"
-    elif [ $NANOS_NAME = "windows" ]; then
-        NANOS_REPOS_DIR="$HOME/repos"
+    if ask "Install rust toolchain"; then
+        trypacmaninstall rustup
+        sudo rustup install stable
+        sudo rustup default stable
+        sudo rustup component add rls rust-analysis rust-src
+    fi
+    if [ -d $NANOS_REPOS_DIR/neovim ] && ask "Install nvim from source"; then
+        cd $NANOS_REPOS_DIR &&
+        sudo rm -r neovim &&
+        git clone https://github.com/neovim/neovim &&
+        cd neovim &&
+        sudo make CMAKE_BUILD_TYPE=Release install &&
+        cd $NANOS_REPOS_DIR
     fi
 }
+#}}}
+#{{{ ubuntu_pkg_setup()
+ubuntu_pkg_setup() {
+    tryaptinstall ripgrep
+    tryaptinstall fzf
+    tryaptinstall keychain
+    tryaptinstall tmux
+    tryaptinstall curl
+    tryaptinstall youtube-dl
+    tryaptinstall vim
+    tryaptinstall neovim
+    tryaptinstall nodejs
+    tryaptinstall zsh
 
-
-# BEGIN
-
-detect_os
-cd $HOME
-
-echo ${blue}SSH Keys${reset}
-# Setup ssh
-ask "Setup ssh" && setup_ssh
-
-echo ${blue}Git repos${reset}
-# Clone repos
-
-mkdir -p "$NANOS_REPOS_DIR"
-cd $NANOS_REPOS_DIR
-askclone "dotfiles" "git@bitbucket.org:Nan0Scho1ar/dotfiles.git"
-askclone "scripts" "git@bitbucket.org:Nan0Scho1ar/scripts.git"
-askclone "vimwiki" "git@bitbucket.org:Nan0Scho1ar/vimwiki.git"
-askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
-askclone "bish" "git@github.com:Nan0Scho1ar/bish"
-askclone "gitmanager" "git@github.com:Nan0Scho1ar/gitmanager"
-askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
-
-cd $HOME
-echo ${blue}System Packages${reset}
-
-# Update system
-if [ $NANOS_DISTRO = "Arch" ]; then
-    if ask "Upgrade packages"; then
-        sudo pacman -Syu
-        yay -Syu
+    tryaptinstall fd-find
+    #fd is already used on Ubuntu
+    if dpkg-query -W -f='${Status}' fd-find 2> /dev/null | grep -q "install ok installed"; then
+        asklink "fdfind (ubuntu fix)" "$(which fdfind)" "$HOME/.local/bin/fd"
     fi
-elif [ $NANOS_DISTRO = "Ubuntu" ]; then
-    sudo apt update
-    if ask "Upgrade packages"; then
-        sudo apt upgrade
-    fi
-##TODO Windows
-fi
-
-
-# Install packages
-## Arch
-if [ $NANOS_DISTRO = "Arch" ]; then
-    if ask "Install packages"; then
-        sudo pacman -Sy
-        ### Pacman
-        trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy \
-            steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn \
-            ttf-jetbrains-mono alacritty emacs python-neovim
-        ### AUR
-        if ask "Askinstall extra"; then
-            yay -Sy
-            tryaurinstall --prompt minecraft-launcher
-            tryaurinstall --prompt pandoc
-            tryaurinstall --prompt texlive-most
-            tryaurinstall --prompt postman
-            tryaurinstall --prompt rider
-        fi
-        if ask "Install rust toolchain"; then
-            trypacmaninstall rustup
-            sudo rustup install stable
-            sudo rustup default stable
-            sudo rustup component add rls rust-analysis rust-src
-        fi
-    fi
-## Ubuntu
-elif [ $NANOS_DISTRO = "Ubuntu" ]; then
-    if ask "Install packages"; then
-        tryaptinstall ripgrep
-        tryaptinstall fzf
-        tryaptinstall keychain
-        tryaptinstall tmux
-        tryaptinstall curl
-        tryaptinstall youtube-dl
-        tryaptinstall vim
-        tryaptinstall neovim
-        tryaptinstall nodejs
-        tryaptinstall zsh
-
-        tryaptinstall fd-find
-        #fd is already used on Ubuntu
-        if dpkg-query -W -f='${Status}' fd-find 2> /dev/null | grep -q "install ok installed"; then
-            asklink "fdfind (ubuntu fix)" "$(which fdfind)" "$HOME/.local/bin/fd"
-        fi
-        #Bat is not in standard repos because reasons
-        if dpkg-query -W -f='${Status}' bat 2> /dev/null | grep -q "install ok installed"; then
-            echo "${green}bat${reset} is already installed"
-        elif ask "'${magenta}bat${reset}' is not installed, would you like to install it"; then
-            cur_dir=$(pwd)
-            cd /tmp
-            wget https://github.com/sharkdp/bat/releases/download/v0.17.1/bat_0.17.1_amd64.deb
-            sudo dpkg -i bat_0.17.1_amd64.deb
-            cd $cur_dir
-        fi
-
+    #Bat is not in standard repos because reasons
+    if dpkg-query -W -f='${Status}' bat 2> /dev/null | grep -q "install ok installed"; then
+        echo "${green}bat${reset} is already installed"
+    elif ask "'${magenta}bat${reset}' is not installed, would you like to install it"; then
+        cur_dir=$(pwd)
+        cd /tmp
+        wget https://github.com/sharkdp/bat/releases/download/v0.17.1/bat_0.17.1_amd64.deb
+        sudo dpkg -i bat_0.17.1_amd64.deb
+        cd $cur_dir
     fi
     ###TODO Install Rider
+}
+#}}}
+#{{{ vim_setup()
+vim_setup() {
+    #Setup vim/nvim
+    if [ -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ] && [ -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
+        echo "${green}vimplug already installed${reset}"
+    elif ask "Install vim/nvim plugins"; then
+        if [ $NANOS_NAME = "linux" ]; then
+            if [ ! -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ]; then
+                echo "$XDG_DATA_HOME/vim/autoload/plug.vim not found. Downloading..."
+                curl -fLo $HOME/.vim/autoload/plug.vim --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+                vim -E -s +PlugInstall +visual +qall
+            fi
 
 
-fi
-##TODO Windows
+            if [ ! -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
+                echo "$HOME/.config/nvim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
+                curl -fLo "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+            fi
 
-echo ${blue}Link files${reset}
-
-#asklinksudo "/etc/update-motd.d/10-help-text" "/home/nan0scho1ar/dotfiles/linux/99-banner" "/etc/update-motd.d/99-banner"
-asklink ".bashrc" "$NANOS_REPOS_DIR/dotfiles/.bashrc" "/home/nan0scho1ar/.bashrc"
-asklink ".profile" "$NANOS_REPOS_DIR/dotfiles/.profile" "$HOME/.profile"
-asklink ".vimrc" "$NANOS_REPOS_DIR/dotfiles/.vimrc" "/home/nan0scho1ar/.vimrc"
-asklink ".xprofile" "$NANOS_REPOS_DIR/dotfiles/.xprofile" "$HOME/.xprofile"
-asklink ".zshenv" "$NANOS_REPOS_DIR/dotfiles/.zshenv" "$HOME/.zshenv"
-asklink ".tmux.conf" "$NANOS_REPOS_DIR/dotfiles/.tmux.conf" "/home/nan0scho1ar/.tmux.conf"
-askrecursivelinkdir ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
-asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
-
-mkdir -p $HOME/.config/z/
-
-source $HOME/.profile
-echo ${blue}Vim plugins${reset}
-#Setup vim/nvim
-if [ -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ] && [ -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
-    echo "${green}vimplug already installed${reset}"
-elif ask "Install vim/nvim plugins"; then
-    if [ $NANOS_NAME = "linux" ]; then
-        if [ ! -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ]; then
-            echo "$XDG_DATA_HOME/vim/autoload/plug.vim not found. Downloading..."
-            curl -fLo $HOME/.vim/autoload/plug.vim --create-dirs \
-                https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-            vim -E -s +PlugInstall +visual +qall
-        fi
-
-
-        if [ ! -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
-            echo "$HOME/.config/nvim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
-            curl -fLo "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" --create-dirs \
-                https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+            if [ ! -f "$XDG_DATA_HOME/n0s1vim/site/autoload/plug.vim" ]; then
+                echo "$HOME/.config/n0s1vim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
+                curl -fLo "$XDG_DATA_HOME/n0s1vim/site/autoload/plug.vim" --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+            fi
         fi
     fi
+}
+#}}}
+#{{{ tmux_setup()
+tmux_setup() {
+    if [ -d "$HOME/.tmux/plugins" ];then
+        echo "tmux plugin manager (tpm) already installed"
+    elif ask "Install tmux plugin manager"; then
+        mkdir -p $HOME/.tmux/plugins/
+        git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+    fi
+}
+#}}}
+#{{{ configure()
+configure() {
+    #asklinksudo "/etc/update-motd.d/10-help-text" "/home/nan0scho1ar/dotfiles/linux/99-banner" "/etc/update-motd.d/99-banner"
+    asklink ".bashrc" "$NANOS_REPOS_DIR/dotfiles/.bashrc" "$HOME/.bashrc"
+    asklink ".profile" "$NANOS_REPOS_DIR/dotfiles/.profile" "$HOME/.profile"
+    asklink ".vimrc" "$NANOS_REPOS_DIR/dotfiles/.vimrc" "$HOME/.vimrc"
+    asklink ".xprofile" "$NANOS_REPOS_DIR/dotfiles/.xprofile" "$HOME/.xprofile"
+    asklink ".zshenv" "$NANOS_REPOS_DIR/dotfiles/.zshenv" "$HOME/.zshenv"
+    asklink ".tmux.conf" "$NANOS_REPOS_DIR/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
+    askrecursivelinkdir ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
+    asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
+    mkdir -p $HOME/.config/z/
+    source $HOME/.profile
+}
+#}}}
+#{{{ clone_repos()
+clone_repos() {
+    mkdir -p "$NANOS_REPOS_DIR"
+    cd $NANOS_REPOS_DIR
+    askclone "dotfiles" "git@bitbucket.org:Nan0Scho1ar/dotfiles.git"
+    askclone "scripts" "git@bitbucket.org:Nan0Scho1ar/scripts.git"
+    askclone "vimwiki" "git@bitbucket.org:Nan0Scho1ar/vimwiki.git"
+    askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
+    askclone "bish" "git@github.com:Nan0Scho1ar/bish"
+    askclone "gitmanager" "git@github.com:Nan0Scho1ar/gitmanager"
+    askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
+    cd $HOME
+}
+#}}}
+#{{{ git_settings()
+git_settings() {
+    ##Git settings
+    if [ "$(git config --get pull.rebase)" = false ] &&
+       [ "$(git config --get user.email)" = "scorch267@gmail.com" ] &&
+       [ "$(git config --get user.name)" = "nan0scho1ar" ] &&
+       [ "$(git config --get core.editor)" = "vim" ]; then
+        echo "${green}Git${reset} configured correctly"
+    elif ask "Update git settings"; then
+        git config --global pull.rebase false
+        git config --global user.email "scorch267@gmail.com"
+        git config --global user.name "nan0scho1ar"
+        git config --global core.editor "vim"
+    fi
+}
+#}}}
+# BEGIN
+detect_os
+cd $HOME
+[ "$1" = "--configure" ] && configure && exit
+# Setup ssh
+echo ${blue}SSH Keys${reset}
+ask "Setup ssh" && setup_ssh
+echo ${blue}Git repos${reset}
+ask "Clone repos" && clone_repos
+echo ${blue}System Packages${reset}
+# Update system
+if ask "Upgrade packages"; then
+    case $NANOS_DISTRO in
+        Arch) sudo pacman -Syu && yay -Syu ;;
+        Ubuntu) sudo apt update && sudo apt upgrade ;;
+        Windows) echo "TODO Windows" ;;
+    esac
 fi
-
-if [ -d "$HOME/.tmux/plugins" ];then
-    echo "tmux plugin manager (tpm) already installed"
-elif ask "Install tmux plugin manager"; then
-    mkdir -p $HOME/.tmux/plugins/
-    git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+# Install packages
+if ask "Install packages"; then
+    case $NANOS_DISTRO in
+        Arch) arch_pkg_setup ;;
+        Ubuntu) ubuntu_pkg_setup ;;
+        Windows) echo "TODO Windows" ;;
+    esac
 fi
-
+echo ${blue}Link files${reset}
+configure
+echo ${blue}Vim plugins${reset}
+vim_setup
+echo ${blue}Tmux plugins${reset}
+tmux_setup
 #echo ${blue}Git settings${reset}
-##Git settings
-#if [ "$(git config --get pull.rebase)" = false ] &&
-#   [ "$(git config --get user.email)" = "scorch267@gmail.com" ] &&
-#   [ "$(git config --get user.name)" = "nan0scho1ar" ] &&
-#   [ "$(git config --get core.editor)" = "vim" ]; then
-#    echo "${green}Git${reset} configured correctly"
-#elif ask "Update git settings"; then
-#    git config --global pull.rebase false
-#    git config --global user.email "scorch267@gmail.com"
-#    git config --global user.name "nan0scho1ar"
-#    git config --global core.editor "vim"
-#fi
+#git_settings
