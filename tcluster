@@ -1,7 +1,0 @@
-#!/bin/bash
-#AUTHOR: Nan0Scho1ar
-#License: GPL v3
-#Script for running precofigured child in nested tmux sessions
-
-TMUX= ;
-toomuxh ${HOSTNAME}_C $HOME/repos/dotfiles/tmux/cluster.sh $1
