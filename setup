@@ -352,7 +352,10 @@ git_settings() {
 # BEGIN
 detect_os
 cd $HOME
-[ "$1" = "--configure" ] && configure && exit
+if [ "$1" = "--configure" ]; then
+    configure 
+    exit
+fi
 # Setup ssh
 echo ${blue}SSH Keys${reset}
 ask "Setup ssh" && setup_ssh
