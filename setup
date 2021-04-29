@@ -314,6 +314,7 @@ configure() {
     asklink ".tmux.conf" "$NANOS_REPOS_DIR/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
     askrecursivelinkdir ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
     asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
+    asklinksudo "awesome/rc.lua" "$NANOS_REPOS_DIR/dotfiles/etc/xdg/awesome/rc.lua" "/etc/xdg/awesome/rc.lua"
     mkdir -p $HOME/.config/z/
     source $HOME/.profile
 }
