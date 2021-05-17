@@ -307,6 +307,7 @@ tmux_setup() {
 configure() {
     #asklinksudo "/etc/update-motd.d/10-help-text" "/home/nan0scho1ar/dotfiles/linux/99-banner" "/etc/update-motd.d/99-banner"
     asklink ".bashrc" "$NANOS_REPOS_DIR/dotfiles/.bashrc" "$HOME/.bashrc"
+    asklink ".xinitrc" "$NANOS_REPOS_DIR/dotfiles/.xinitrc" "$HOME/.xinitrc"
     asklink ".profile" "$NANOS_REPOS_DIR/dotfiles/.profile" "$HOME/.profile"
     asklink ".vimrc" "$NANOS_REPOS_DIR/dotfiles/.vimrc" "$HOME/.vimrc"
     asklink ".xprofile" "$NANOS_REPOS_DIR/dotfiles/.xprofile" "$HOME/.xprofile"
@@ -314,6 +315,7 @@ configure() {
     asklink ".tmux.conf" "$NANOS_REPOS_DIR/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
     askrecursivelinkdir ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
     asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
+    asklinksudo "/etc/thinkfan.conf" "$NANOS_REPOS_DIR/dotfiles/etc/thinkfan.conf" "/etc/thinkfan.conf"
     asklinksudo "awesome/rc.lua" "$NANOS_REPOS_DIR/dotfiles/etc/xdg/awesome/rc.lua" "/etc/xdg/awesome/rc.lua"
     mkdir -p $HOME/.config/z/
     source $HOME/.profile
@@ -353,7 +355,7 @@ git_settings() {
 detect_os
 cd $HOME
 if [ "$1" = "--configure" ]; then
-    configure 
+    configure
     exit
 fi
 # Setup ssh
