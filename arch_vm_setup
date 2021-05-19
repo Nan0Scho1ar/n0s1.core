@@ -1,7 +1,7 @@
 #!/bin/sh
 ### Basic Arch VM install script
-MYHOSTNAME=io
 
+read -p "Enter the hostname: " MYHOSTNAME
 timedatectl set-ntp true
 echo -e "g\nn\n\n\n+1M\nt\n4\nn\n\n\n+4G\nt\n2\n19\nn\n\n\n\np\nw\n" | fdisk /dev/sda
 mkfs.ext4 /dev/sda3
@@ -21,5 +21,6 @@ echo -e "127.0.0.1   localhost\n::1     localhost\n127.0.1.1   $MYHOSTNAME.local
 pacman -Sy --noconfirm grub
 grub-install --target=i386-pc /dev/sda
 grub-mkconfig -o /boot/grub/grub.cfg
-passwd
 EOF
+echo "Run passwd to set root password then exit and reboot"
+arch-chroot /mnt
