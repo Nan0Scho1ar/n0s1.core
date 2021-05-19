@@ -8,18 +8,18 @@ mkfs.ext4 /dev/sda3
 mkswap /dev/sda2
 mount /dev/sda3 /mnt
 swapon /dev/sda2
-#pacstrap /mnt base linux linux-firmware vi
-#genfstab -U /mnt >> /mnt/etc/fstab
-#cat << EOF |  arch-chroot /mnt
-#ln -sf /usr/share/zoneinfo/Australia/Brisbane /etc/localtime
-#hwclock --systohc
-#sed -i "s/#\(en_US.UTF-8 UTF-8\)/\1/;s/#\(en_AU.UTF-8 UTF-8\)/\1/" /etc/locale.gen
-#locale-gen
-#echo "LANG=en_US.UTF-8" > /etc/locale.conf
-#echo "$MYHOSTNAME" > /etc/hostname
-#echo -e "127.0.0.1   localhost\n::1     localhost\n127.0.1.1   $MYHOSTNAME.localdomain  $MYHOSTNAME" >> /etc/hosts
-#pacman -Sy --noconfirm grub
-#grub-install --target=i386-pc /dev/sda
-#grub-mkconfig -o /boot/grub/grub.cfg
-#passwd
-#EOF
+pacstrap /mnt base linux linux-firmware vi
+genfstab -U /mnt >> /mnt/etc/fstab
+cat << EOF |  arch-chroot /mnt
+ln -sf /usr/share/zoneinfo/Australia/Brisbane /etc/localtime
+hwclock --systohc
+sed -i "s/#\(en_US.UTF-8 UTF-8\)/\1/;s/#\(en_AU.UTF-8 UTF-8\)/\1/" /etc/locale.gen
+locale-gen
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
+echo "$MYHOSTNAME" > /etc/hostname
+echo -e "127.0.0.1   localhost\n::1     localhost\n127.0.1.1   $MYHOSTNAME.localdomain  $MYHOSTNAME" >> /etc/hosts
+pacman -Sy --noconfirm grub
+grub-install --target=i386-pc /dev/sda
+grub-mkconfig -o /boot/grub/grub.cfg
+passwd
+EOF
