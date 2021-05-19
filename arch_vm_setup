@@ -3,7 +3,7 @@
 MYHOSTNAME=io
 
 timedatectl set-ntp true
-echo -e "g\nn\n\n\n+1M\nt\n1\n4\nn\n\n\n+4G\nt\n2\n19\nn\n\n\n\np\nw\n" | fdisk /dev/sda
+echo -e "g\nn\n\n\n+1M\nt\n4\nn\n\n\n+4G\nt\n2\n19\nn\n\n\n\np\nw\n" | fdisk /dev/sda
 mkfs.ext4 /dev/sda3
 mkswap /dev/sda2
 mount /dev/sda3 /mnt
