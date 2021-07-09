@@ -31,6 +31,8 @@ case $1 in
                 exit
                 ;;
             *)
+                echo "SESSION=$SESSION"
+                echo "CONFIG=$CONFIG"
                 if tmux has-session -t $SESSION 2>/dev/null; then
                     tmux -2 attach-session -t $SESSION 2>/dev/null ||
                     echo "Failed to attach tmux session '$SESSION'"
