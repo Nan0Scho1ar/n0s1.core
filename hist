@@ -30,7 +30,7 @@ if [[ $cmdlist =~ ^[0-9]+\.\.[0-9]+$ ]]; then
     final=""
     for i in $(eval echo "{$START..$END}"); do
         cmd=$(cat --number $histfile | sed -n "s/^\s*${i}\t\(.*\)/\1/p")
-        [ -z "$cmd" ] && final="$cmd" || final="$final$sep$cmd"
+        [ -z "$final" ] && final="$cmd" || final="$final$sep$cmd"
     done
     echo "$final"
     eval "$final"
