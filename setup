@@ -171,16 +171,21 @@ setup_ssh() {
 #{{{ detect_os()
 #Detect OS
 detect_os() {
-    case $(uname | tr '[:upper:]' '[:lower:]') in
-      linux*)
+    os=$(uname | tr '[:upper:]' '[:lower:]')
+    case $os in
+      linux|linux*)
         export NANOS_NAME=linux
         distros=$(cat /etc/*-release | sed -n "s/DISTRIB_ID=\(.*\)/\1/p")
         case $distros in
             ManjaroLinux) NANOS_DISTRO="Arch" ;;
             Ubuntu) NANOS_DISTRO="Ubuntu" ;;
             *)
-                echo "Unrecognized linux distro, please update startup script"
-                exit
+                if pacman --help >/dev/null 2>&1; then
+                    NANOS_DISTRO="Arch"
+                else
+                    echo "Unrecognized linux distro, please update startup script"
+                    exit
+                fi
                 ;;
         esac
         NANOS_REPOS_DIR="$HOME/repos"
@@ -194,7 +199,7 @@ detect_os() {
         NANOS_REPOS_DIR="$HOME/repos"
         ;;
       *)
-        echo "Unrecognized OS, please update startup script"
+        echo "Unrecognized OS {$os}, please update startup script"
         exit
         ;;
     esac
@@ -207,6 +212,10 @@ arch_pkg_setup() {
     trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy \
         steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn \
         ttf-jetbrains-mono alacritty emacs python-neovim unzip xsel
+    if ask "Install doom emacs"; then
+        git clone --depth 1 https://github.com/hlissner/doom-emacs ~/.emacs.d
+        ~/.emacs.d/bin/doom install
+    fi
     ### AUR
     if ask "Askinstall extra"; then
         yay -Sy
@@ -389,3 +398,4 @@ echo ${blue}Tmux plugins${reset}
 tmux_setup
 #echo ${blue}Git settings${reset}
 #git_settings
+#doom emacs
