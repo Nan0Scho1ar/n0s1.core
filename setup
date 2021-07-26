@@ -207,6 +207,10 @@ arch_pkg_setup() {
     trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy \
         steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn \
         ttf-jetbrains-mono alacritty emacs python-neovim unzip xsel
+    if ask "Install doom emacs"; then
+        git clone --depth 1 https://github.com/hlissner/doom-emacs ~/.emacs.d
+        ~/.emacs.d/bin/doom install
+    fi
     ### AUR
     if ask "Askinstall extra"; then
         yay -Sy
@@ -388,3 +392,4 @@ echo ${blue}Tmux plugins${reset}
 tmux_setup
 #echo ${blue}Git settings${reset}
 #git_settings
+#doom emacs
