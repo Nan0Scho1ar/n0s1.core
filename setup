@@ -76,11 +76,19 @@ asklink() {
     elif ask "Link ${magenta}$1${reset}"; then
         #Create dir if not exist
         mkdir -p "$(dirname "${3}")"
-        if [ -f "$3" ]; then
-            ask "${red}$1${reset} already exists. Remove it?" && rm "$3"
-        fi
-        ln -sf "$2" "$3"
+        trylink "$2" "$3"
     fi
+}
+trylink() {
+    if [ "$(diff -q "$1" "$2")" != "" ]; then
+        ask "${magenta}$2${reset} already exists and is not identical. Show diff" &&
+            diff "$1" "$2"
+        ask "Remove ${red}$2${reset}" && rm "$2"
+    else
+        rm "$2"
+    fi
+    echo "Linking ${magenta}$2${reset}"
+    ln -sf "$1" "$2"
 }
 #}}}
 #{{{ askrecursivelinkdir()
@@ -88,39 +96,31 @@ asklink() {
 askrecursivelinkdir() {
     for f in $(find "$2" -type f | sed "s|$2/*||"); do
         if [ "$(readlink -- $3/$f)" != "$2/$f" ]; then
-	    if ask "Recursively Link $1"; then
-		#Create dir if not exist
-		mkdir -p "$3"
-		for dir in $(find "$2" -type d | sed "s|$2||"); do
-		    if [ ! -d "$3/$dir" ]; then
-			echo "Creating directory $3/$dir"
-			#Create child dirs if not exist
-			mkdir -p "$3/$dir"
-		    fi
-		done
-		for file in $(find "$2" -type f | sed "s|$2/*||"); do
-		    if [ "$(readlink -- $3/$file)" = "$2/$file" ]; then
-                echo "${green}$1${reset} already linked correctly"
-                continue
-            elif [ ! -z "$3/$file" ]; then
-                if [ "$(diff -q "$2/$file" "$3/$file")" != "" ]; then
-                    ask "${magenta}$3/$file${reset} already exists and is not identical. Show diff" &&
-                        diff -q "$2/$file" "$3/$file"
-                    ask "Remove ${red}$3/$file${reset}" && rm "$3/$file"
-                else
-                    rm "$3/$file"
+            if ask "Recursively Link $1"; then
+            #Create dir if not exist
+            mkdir -p "$3"
+            for dir in $(find "$2" -type d | sed "s|$2||"); do
+                if [ ! -d "$3/$dir" ]; then
+                echo "Creating directory $3/$dir"
+                #Create child dirs if not exist
+                mkdir -p "$3/$dir"
                 fi
-            else
-                echo "File does not exist"
-		    fi
-		    echo "Linking ${magenta}$file${reset}"
-		    ln -s "$2/$file" "$3/$file"
-		done
+            done
+            for file in $(find "$2" -type f | sed "s|$2/*||"); do
+                if [ "$(readlink -- $3/$file)" = "$2/$file" ]; then
+                    echo "${green}$1${reset} already linked correctly"
+                    continue
+                elif [ ! -z "$3/$file" ]; then
+                    trylink "$2/$file" "$3/$file"
+                else
+                    echo "File does not exist"
+                fi
+            done
 	    fi
 	    return
 	fi
     done
-    echo "${green}.config${reset} already linked correctly"
+    echo "${green}$1${reset} already linked correctly"
 }
 
 #}}}
@@ -314,6 +314,7 @@ configure() {
     asklink ".zshenv" "$NANOS_REPOS_DIR/dotfiles/.zshenv" "$HOME/.zshenv"
     asklink ".tmux.conf" "$NANOS_REPOS_DIR/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
     askrecursivelinkdir ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
+    askrecursivelinkdir ".doom.d" "$NANOS_REPOS_DIR/dotfiles/.doom.d" "$HOME/.doom.d"
     asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
     asklinksudo "/etc/thinkfan.conf" "$NANOS_REPOS_DIR/dotfiles/etc/thinkfan.conf" "/etc/thinkfan.conf"
     asklinksudo "awesome/rc.lua" "$NANOS_REPOS_DIR/dotfiles/etc/xdg/awesome/rc.lua" "/etc/xdg/awesome/rc.lua"
