@@ -171,16 +171,21 @@ setup_ssh() {
 #{{{ detect_os()
 #Detect OS
 detect_os() {
-    case $(uname | tr '[:upper:]' '[:lower:]') in
-      linux*)
+    os=$(uname | tr '[:upper:]' '[:lower:]')
+    case $os in
+      linux|linux*)
         export NANOS_NAME=linux
         distros=$(cat /etc/*-release | sed -n "s/DISTRIB_ID=\(.*\)/\1/p")
         case $distros in
             ManjaroLinux) NANOS_DISTRO="Arch" ;;
             Ubuntu) NANOS_DISTRO="Ubuntu" ;;
             *)
-                echo "Unrecognized linux distro, please update startup script"
-                exit
+                if pacman --help >/dev/null 2>&1; then
+                    NANOS_DISTRO="Arch"
+                else
+                    echo "Unrecognized linux distro, please update startup script"
+                    exit
+                fi
                 ;;
         esac
         NANOS_REPOS_DIR="$HOME/repos"
@@ -194,7 +199,7 @@ detect_os() {
         NANOS_REPOS_DIR="$HOME/repos"
         ;;
       *)
-        echo "Unrecognized OS, please update startup script"
+        echo "Unrecognized OS {$os}, please update startup script"
         exit
         ;;
     esac
