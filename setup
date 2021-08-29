@@ -182,6 +182,8 @@ detect_os() {
             *)
                 if pacman --help >/dev/null 2>&1; then
                     NANOS_DISTRO="Arch"
+                elif command -v termux-setup-storage > /dev/null 2>&1; then
+                    NAN0S_DISTRO="Termux"
                 else
                     echo "Unrecognized linux distro, please update startup script"
                     exit
