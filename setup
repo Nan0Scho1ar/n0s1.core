@@ -188,7 +188,7 @@ detect_os() {
                 fi
                 ;;
         esac
-        NANOS_REPOS_DIR="$HOME/repos"
+        NANOS_REPOS_DIR="$HOME/repos/me"
         ;;
       darwin*)
         export NANOS_NAME=osx
@@ -196,7 +196,7 @@ detect_os() {
       msys*|MINGW64_NT-10.0*)
         export NANOS_NAME=windows
         NANOS_DISTRO="Windows"
-        NANOS_REPOS_DIR="$HOME/repos"
+        NANOS_REPOS_DIR="$HOME/repos/me"
         ;;
       *)
         echo "Unrecognized OS {$os}, please update startup script"
@@ -366,6 +366,9 @@ detect_os
 cd $HOME
 if [ "$1" = "--configure" ]; then
     configure
+    exit
+elif [ "$1" = "--repos" ]; then
+    clone_repos
     exit
 fi
 # Setup ssh
