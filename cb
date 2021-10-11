@@ -6,6 +6,7 @@
 
 cb() {
     #TODO Prompt for missing args
+    [ -z $1 ] && bm list dirs
     case "$1" in
         add) echo -e "$2\n$(pwd)" | bm add dirs;;
         rm) bm rm "$2" dirs;;
