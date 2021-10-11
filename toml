@@ -1,74 +1,70 @@
-#!/bin/sh
-# TOML: Simple get/set commands to read and write toml files
+#!/bin/bash
+# TOML: Simple get commands to read toml files
 # (Not all featues supported)
 # Author: Nan0Scho1ar (Christopher Mackinga)
 # Created: 27/10/2020
-# License: MIT License
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 exprq() { expr "$1" : "$2" 1>/dev/null; }
 
 toml() {
-    cmd="$1"
-    [ -z $2 ] && lines="$(echo "$(< /dev/stdin)")" || lines="$(cat "$2")";
-    parent="$(echo $3 | sed 's/\(.*\)\.\(.*\)/\1/')"
-    key="$(echo $3 | sed 's/\(.*\)\.\(.*\)/\2/')"
-    value="$4"
+    flatten() {
+        comment_regex="^\s*#"
+        header_regex="\s*\[.*\]"
+        value_regex="\s*.*=.*"
+        extract_header="s/\[//g; s/\]//g; s/ //g; s/\t//g; s/\n//g"
+        extract_value="s/^\s*//; s/\t//g; s/\n//; s/ =/=/; s/= /=/"
 
-    if [ $cmd = "get" ]; then
-        # TODO support multiline arrays
-        #Remove comments; Filter section; Return value
-        begin="$(exprq "$parent" "$key" && echo "0" || echo "/^\s*\[$parent\]/")"
-        echo "$lines" | sed -n "s/#.*//g;$begin,/^s*\[.*\]/!d;s/^\s*\"*$key\"*\s*=\s*\(.*\)/\1/p"
-
-    #TODO Fix file indenting
-    elif [ $cmd = "set" ]; then
-    #echo $cmd
-    #echo $parent
-    #echo $key
-    #echo $value
-        if exprq "$parent" "$key"; then
-            updated=false
-            sed -n "/\\[.*\\]/q;p" "$lines" | \
-            while read line; do
-                if exprq "$line" "$key=.*"; then
-                    echo "$key=$value";
-                    updated=true;
-                    continue;
-                fi
-                echo $line;
-            done
-            $updated || echo "$key=$value";
-            sed -n "/\\[.*\\]/,/EOF/p" "$lines"
-        else
-            in_parent=false
-            # try to update value for existing header
-            cat "$lines" | while read line; do
-                exprq "$line" "\\[.*\\]" && in_parent=false;
-                # Set in_parent if currently inside correct header
-                exprq "$line" "\\[$parent\\]" && in_parent=true;
-                if $in_parent; then
-                    # Write new value if existing key found
-                    if exprq "$line" "$key=.*"; then
-                        echo "$key=$value";
-                        in_parent=false;
-                        continue;
-                        # Write new value if existing key not found
-                        # before entering next header
-                    elif exprq "$line" "\\[.*\\]" && \
-                        ! exprq "$line" "\\[$parent\\]"; then
-                            echo "$key=$value";
-                            in_parent=false;
-                    fi
-                fi
-                echo $line;
-            done;
-            # If the header doesn't exist add it and the value
-            if ! grep -q "\\[$parent\\]" "$lines"; then
-                # TODO Recursively look for parent headers not dump
-                # at bottom of lines
-                echo "[$parent]" >> $lines && echo "$key=$value" >> $lines
-                return
+        parent=""
+        while IFS= read -r line; do
+            if [[ $line =~ $comment_regex ]]; then
+                continue
+            elif [[ $line =~ $header_regex ]]; then
+                parent=$(sed "$extract_header" <<< "$line")
+            elif [[ $line =~ $value_regex ]]; then
+                echo "$parent.$(sed "$extract_value" <<< "$line")"
             fi
-        fi
-    fi
+        done < <(cat /dev/stdin)
+    }
+
+    #Returns the first value which matches the header
+    get_value() {
+        match="$1=.*"
+        while IFS= read -r line; do
+            if [[ $line =~ $match ]]; then
+                sed "s/^.*=//" <<< "$line" | tr -d '"'
+                break
+            fi
+        done < <(cat /dev/stdin | flatten)
+    }
+
+    # Returns all headers and values matching the input
+    get() {
+        match="^$1.*"
+        while IFS= read -r line; do
+            if [[ $line =~ $match ]]; then
+                sed "s/^\(.*\)=.*/\1/" <<< "$line"
+            fi
+        done < <(cat /dev/stdin | flatten)
+    }
+
+    case "$1" in
+        "get") cat /dev/stdin | get "$2" ;;
+        "get_value") cat /dev/stdin | get_value "$2" ;;
+        "-V") echo "toml: version 0.7.1" ;;
+        *) echo "Error: Unknown option";;
+    esac
 }
