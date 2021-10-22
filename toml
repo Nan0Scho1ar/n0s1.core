@@ -33,9 +33,13 @@ toml() {
             elif [[ $line =~ $header_regex ]]; then
                 parent=$(sed "$extract_header" <<< "$line")
             elif [[ $line =~ $value_regex ]]; then
-                echo "$parent.$(sed "$extract_value" <<< "$line")"
+                if [ -z $parent ]; then
+                    sed "$extract_value" <<< "$line"
+                else
+                    echo "$parent.$(sed "$extract_value" <<< "$line")"
+                fi
             fi
-        done < <(cat /dev/stdin)
+        done < /dev/stdin
     }
 
     #Returns the first value which matches the header
@@ -54,7 +58,7 @@ toml() {
         match="^$1.*"
         while IFS= read -r line; do
             if [[ $line =~ $match ]]; then
-                sed "s/^\(.*\)=.*/\1/" <<< "$line"
+                echo "$line"
             fi
         done < <(cat /dev/stdin | flatten)
     }
