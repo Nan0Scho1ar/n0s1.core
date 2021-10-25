@@ -212,8 +212,8 @@ arch_pkg_setup() {
     sudo pacman -Sy
     ### Pacman
     trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy \
-        steam code youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn \
-        ttf-jetbrains-mono alacritty emacs python-neovim unzip xsel
+        youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn \
+        ttf-jetbrains-mono alacritty emacs python-neovim unzip xsel bspwm sxhkd polybar
     if ask "Install doom emacs"; then
         git clone --depth 1 https://github.com/hlissner/doom-emacs ~/.emacs.d
         ~/.emacs.d/bin/doom install
