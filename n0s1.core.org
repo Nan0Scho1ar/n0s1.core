@@ -1,0 +1,4099 @@
+* n0s1.core Webserver
+** wsgi.py
+#+begin_src python :tangle wsgi.py
+from app import app
+
+if __name__ == "__main__":
+        app.run()
+#+end_src
+
+** app.py
+#+begin_src python :tangle app.py
+#!/bin/python
+# APP.PY: Flask server to serve html or plain text depending on client's useragent string
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 21/01/2021
+# License: MIT License
+# Requires flask, pygments, markdown
+
+import sys
+import os
+import markdown
+import markdown.extensions.fenced_code
+import markdown.extensions.codehilite
+from flask import Flask, request, make_response, render_template, abort
+from pygments.formatters import HtmlFormatter
+
+PLAIN_TEXT_AGENTS = [ "curl", "httpie", "lwp-request", "wget", "python-requests", "openbsd ftp", "powershell", "fetch" ]
+INDEX_PATH = "./README.md"
+app = Flask(__name__)
+
+def to_html(lines):
+    md = markdown.markdown(lines, extensions=["fenced_code", "codehilite"])
+    formatter = HtmlFormatter(style="monokai",full=True,cssclass="codehilite")
+    css = "\nbody { background-color: #33363B; color: #CCCCCC;}\ntd.linenos pre { background-color: #AAAAAA; }"
+    return "<style>" + formatter.get_style_defs() + css + "</style>" + md
+
+def get_file_path(path, is_man):
+    if is_man:
+        if path == None:
+            return "./man/README.md"
+        elif os.path.isfile("./man/" + path):
+            return "./man/" + path
+        elif os.path.isfile("./man/" + path + ".md"):
+            return "./man/" + path + ".md"
+    else:
+        if path == None:
+            return INDEX_PATH
+        elif os.path.isfile("./" + path):
+            return "./" + path
+        elif os.path.isfile("./" + path + ".sh"):
+            return "./" + path + ".sh"
+    return None
+
+def try_get_lines(file_path):
+    if file_path == None:
+        return ""
+    with open(file_path) as f:
+        lines = f.read()
+    return lines
+
+def get_content(path, request, is_man, is_raw):
+    file_path = get_file_path(path, is_man)
+    lines = try_get_lines(file_path)
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if any([x in user_agent for x in PLAIN_TEXT_AGENTS]):
+        return "Error: file not found" if file_path == None else lines
+    if file_path == None:
+        abort(404)
+    if is_raw:
+        resp = make_response(lines)
+        resp.mimetype = 'text/plain'
+        return resp
+    if file_path == INDEX_PATH or is_man:
+        return to_html(lines)
+    #This must be the base url so display the man above the file
+    man_path = get_file_path(path, True)
+    man_lines = try_get_lines(man_path)
+    return to_html(man_lines + "\n##CODE:\n```\n" + lines + "\n```")
+
+@app.route("/")
+@app.route("/<path>")
+def get_file(path=None):
+    return get_content(path, request, False, False)
+
+@app.route("/man/<path>")
+def get_man(path=None):
+    return get_content(path, request, True, False)
+
+@app.route("/raw/<path>")
+def get_raw(path=None):
+    return get_content(path, request, False, True)
+
+@app.route("/raw/man/<path>")
+def get_raw_man(path=None):
+    return get_content(path, request, True, True)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0')
+#+end_src
+
+* arch_pkg_setup
+#+begin_src sh :tangle arch_pkg_setup
+#!/bin/bash
+# arch_pkg_setup: Sets up packages on an arch system
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:38:38 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+arch_pkg_setup() {
+    sudo pacman -Sy
+    ### Pacman
+    trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy \
+        youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn \
+        ttf-jetbrains-mono alacritty emacs python-neovim unzip xsel bspwm sxhkd polybar
+    if ask "Install doom emacs"; then
+        git clone --depth 1 https://github.com/hlissner/doom-emacs ~/.emacs.d
+        ~/.emacs.d/bin/doom install
+    fi
+    ### AUR
+    if ask "Askinstall extra"; then
+        yay -Sy
+        tryaurinstall --prompt minecraft-launcher
+        tryaurinstall --prompt pandoc
+        tryaurinstall --prompt texlive-most
+        tryaurinstall --prompt postman
+        tryaurinstall --prompt rider
+    fi
+    if ask "Install rust toolchain"; then
+        trypacmaninstall rustup
+        sudo rustup install stable
+        sudo rustup default stable
+        sudo rustup component add rls rust-analysis rust-src
+    fi
+    if [ -d $NANOS_REPOS_DIR/neovim ] && ask "Install nvim from source"; then
+        cd $NANOS_REPOS_DIR &&
+        sudo rm -r neovim &&
+        git clone https://github.com/neovim/neovim &&
+        cd neovim &&
+        sudo make CMAKE_BUILD_TYPE=Release install &&
+        cd $NANOS_REPOS_DIR
+    fi
+}
+#+end_src
+
+* arch_vm_setup
+#+begin_src sh :tangle arch_vm_setup
+#!/bin/sh
+### Basic Arch VM install script
+
+read -p "Enter the hostname: " MYHOSTNAME
+timedatectl set-ntp true
+echo -e "g\nn\n\n\n+1M\nt\n4\nn\n\n\n+4G\nt\n2\n19\nn\n\n\n\np\nw\n" | fdisk /dev/sda
+mkfs.ext4 /dev/sda3
+mkswap /dev/sda2
+mount /dev/sda3 /mnt
+swapon /dev/sda2
+pacstrap /mnt base linux linux-firmware vi
+genfstab -U /mnt >> /mnt/etc/fstab
+cat << EOF |  arch-chroot /mnt
+ln -sf /usr/share/zoneinfo/Australia/Brisbane /etc/localtime
+hwclock --systohc
+sed -i "s/#\(en_US.UTF-8 UTF-8\)/\1/;s/#\(en_AU.UTF-8 UTF-8\)/\1/" /etc/locale.gen
+locale-gen
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
+echo "$MYHOSTNAME" > /etc/hostname
+echo -e "127.0.0.1   localhost\n::1     localhost\n127.0.1.1   $MYHOSTNAME.localdomain  $MYHOSTNAME" >> /etc/hosts
+pacman -Sy --noconfirm grub
+grub-install --target=i386-pc /dev/sda
+grub-mkconfig -o /boot/grub/grub.cfg
+EOF
+echo "Run passwd to set root password then exit and reboot"
+arch-chroot /mnt
+#+end_src
+
+* ask
+#+begin_src sh :tangle ask
+#!/bin/bash
+# ask: Promts the user to answer a yes/no question.
+# Returns after a single char is entered without hitting return.
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:29:17 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+ask() {
+    while true; do
+    read -p "${1} ${yellow}y/n${reset} " -sn1
+        echo
+        [[ $REPLY =~ ^[Yy]$ ]] && return 0
+        [[ $REPLY =~ ^[Nn]$ ]] && return 1
+    done
+}
+#+end_src
+
+* askclone
+#+begin_src sh :tangle askclone
+#!/bin/bash
+# askclone: promts the user to clone a git repository
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:35:26 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+askclone() {
+    if [ -d $1 ]; then
+        echo "Directory $1 already exists, skipping..."
+    elif ask "Clone ${1}"; then
+        echo "Cloning $1"
+        git clone --recurse-submodules $2
+    fi
+}
+#+end_src
+
+* asklink
+#+begin_src sh :tangle asklink
+#!/bin/bash
+# asklink: prompts the user to create symlink if not already created
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:30:32 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+asklink() {
+    if [ "$(readlink -- $3)" = $2 ]; then
+        echo "${green}$1${reset} already linked correctly"
+    elif ask "Link ${magenta}$1${reset}"; then
+        #Create dir if not exist
+        mkdir -p "$(dirname "${3}")"
+        trylink "$2" "$3"
+    fi
+}
+#+end_src
+
+* asklinkrecursive
+#+begin_src sh :tangle asklinkrecursive
+#!/bin/bash
+# asklinkrecursive: Creates symlinks for all nested dirs
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:33:23 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+#This is not actually recursive lol
+askrecursivelinkdir() {
+    for f in $(find "$2" -type f | sed "s|$2/*||"); do
+        if [ "$(readlink -- $3/$f)" != "$2/$f" ]; then
+            if ask "Recursively Link $1"; then
+            #Create dir if not exist
+            mkdir -p "$3"
+            for dir in $(find "$2" -type d | sed "s|$2||"); do
+                if [ ! -d "$3/$dir" ]; then
+                echo "Creating directory $3/$dir"
+                #Create child dirs if not exist
+                mkdir -p "$3/$dir"
+                fi
+            done
+            for file in $(find "$2" -type f | sed "s|$2/*||"); do
+                if [ "$(readlink -- $3/$file)" = "$2/$file" ]; then
+                    echo "${green}$1${reset} already linked correctly"
+                    continue
+                elif [ ! -z "$3/$file" ]; then
+                    trylink "$2/$file" "$3/$file"
+                else
+                    echo "File does not exist"
+                fi
+            done
+	    fi
+	    return
+	fi
+    done
+    echo "${green}$1${reset} already linked correctly"
+}
+#+end_src
+
+* asklinksudo
+#+begin_src sh :tangle asklinksudo
+#!/bin/bash
+# asklinksudo: prompts user to create a symlink which requires sudo
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:34:34 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+asklinksudo() {
+    if [ "$(readlink -- $3)" = $2 ]; then
+        echo "${green}$1${reset} already linked correctly"
+    elif ask "Link ${magenta}$1${reset}"; then
+        #Create dir if not exist
+        mkdir -p "$(dirname "${3}")"
+        if [ -f "$3" ]; then
+            ask "${red}$1${reset} already exists. Remove it?" && sudo rm "$3"
+        fi
+        sudo ln -sf "$2" "$3"
+    fi
+}
+#+end_src
+
+* awkp
+#+begin_src sh :tangle awkp
+#!/bin/sh
+#AWKP: awk print colums
+#Author: Nan0Scho1ar (Christopher Mackinga)
+#License: GPLv3
+#Description: simplify printing specifig colums using awk
+
+if [[ $# -eq 0 ]]; then
+    column -t
+else
+    awk "{print $(echo "\$$@" | sed 's/ /"\t"$/g')}" | column -t
+fi
+#+end_src
+
+* bm
+#+begin_src sh :tangle bm
+#!/bin/sh
+# BM: Bookmarks
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 17/10/2020
+# License: GPL v3
+
+add() { read -p "Enter key: " key; read -p "Enter value: " val; echo "$key~|~$val" >> $1; }
+
+delete() {
+    if [ -z $2 ]; then
+        sed -i $(cat -n $1 | fzy | sed "s/\(\s*[0-9]*\).*/\1dq/") $1
+    else
+        idx=$(grep -n "$1~|~.*" $2 | head -n1 | sed "s/^\([0-9]*\):.*/\1/")
+        sed -i "${idx}d" $2
+    fi
+}
+get() { sed -n "s/^$1~|~\(.*\)/\1/p" $2 | head -n1; }
+readval() { cat "$1" | fzy | sed "s/.*~|~//"; }
+
+mkdir -p ~/.config/bookmarks/;
+if [ -z $1 ]; then readval $(ls $HOME/.config/bookmarks/*.bm | fzy);
+elif [ "$1" = "add" ]; then add "$HOME/.config/bookmarks/$2.bm";
+elif [ "$1" = "rm" ]; then delete "$2" "$HOME/.config/bookmarks/$3.bm";
+elif [ "$1" = "get" ]; then get "$2" "$HOME/.config/bookmarks/$3.bm";
+elif [ "$1" = "list" ]; then cat "$HOME/.config/bookmarks/$2.bm" | sed "s/~|~/\t/" | column -ts $'\t';
+else readval "$HOME/.config/bookmarks/$1.bm";
+fi
+#+end_src
+
+* catenate
+#+begin_src sh :tangle catenate
+#!/bin/sh
+# CATENATE: Prepend/Append data to stdin
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 17/10/2020
+# License: MIT License
+
+catenate()  { cat <(echo -n "$1") - <(echo -n "$2"); }
+#+end_src
+
+* cb
+#+begin_src sh :tangle cb
+#!/bin/sh
+# CB: cd bookmarks
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 31/08/2021
+# License: GPL v3
+
+cb() {
+    #TODO Prompt for missing args
+    [ -z $1 ] && bm list dirs
+    case "$1" in
+        add) echo -e "$2\n$(pwd)" | bm add dirs;;
+        rm) bm rm "$2" dirs;;
+        list) bm list dirs;;
+        reload) source "$NREPOS/n0s1.core/cb";;
+        *) cd $(bm get "$1" dirs);;
+    esac
+}
+#+end_src
+
+* check_root
+#+begin_src sh :tangle check_root
+#!/bin/sh
+# CHECK_ROOT: Throws an error if the current user is not root
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 07/11/2020
+# License: MIT License
+
+check_root () { [[ $EUID - 0 ]] && echo "Error this must be run as root"  && return 1; }
+#+end_src
+
+* colours
+#+begin_src sh :tangle colours
+green=`tput setaf 2`
+red=`tput setaf 1`
+yellow=`tput setaf 3`
+blue=`tput setaf 4`
+magenta=`tput setaf 5`
+cyan=`tput setaf 6`
+white=`tput setaf 7`
+blink=`tput blink`
+reset=`tput sgr0`
+#+end_src
+
+* detect_os
+#+begin_src sh :tangle detect_os
+#!/bin/bash
+# detect_os: Attempts to detect the current operating system
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:37:08 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+detect_os() {
+    os=$(uname | tr '[:upper:]' '[:lower:]')
+    case $os in
+      linux|linux*)
+        export NANOS_NAME=linux
+        distros=$(cat /etc/*-release | sed -n "s/DISTRIB_ID=\(.*\)/\1/p")
+        case $distros in
+            ManjaroLinux) NANOS_DISTRO="Arch" ;;
+            Ubuntu) NANOS_DISTRO="Ubuntu" ;;
+            *)
+                if pacman --help >/dev/null 2>&1; then
+                    NANOS_DISTRO="Arch"
+                elif command -v termux-setup-storage > /dev/null 2>&1; then
+                    NAN0S_DISTRO="Termux"
+                else
+                    echo "Unrecognized linux distro, please update startup script"
+                    exit
+                fi
+                ;;
+        esac
+        NANOS_REPOS_DIR="$HOME/repos/me"
+        ;;
+      darwin*)
+        export NANOS_NAME=osx
+        ;;
+      msys*|MINGW64_NT-10.0*)
+        export NANOS_NAME=windows
+        NANOS_DISTRO="Windows"
+        NANOS_REPOS_DIR="$HOME/repos/me"
+        ;;
+      *)
+        echo "Unrecognized OS {$os}, please update startup script"
+        exit
+        ;;
+    esac
+}
+#+end_src
+
+* discordwebhooks
+#+begin_src sh :tangle discordwebhooks
+#!/bin/sh
+# DISCORD_WEBHOOKS: Tool for managing and messaging using discord webhooks
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 17/10/2020
+# License: MIT License
+
+save() { read -p "Enter $1: " r1; read -p "Enter $2: " r2; echo "$r1|$r2" >> $3; }
+delete() { sed -i $(cat -n $1 | fzf --with-nth 2.. | awk '{print $1"d"}') $1; }
+
+mkdir -p ~/.config/discordwebhooks/;
+if [ -z $1 ]; then
+    IFS='|' read -r username avatar_url <<< $(cat $HOME/.config/discordwebhooks/users.bm | fzf)
+    IFS='|' read -r channel_name webhook_url <<< $(cat $HOME/.config/discordwebhooks/channels.bm | fzf)
+    echo "Enter message to post in $channel_name:"
+    while true; do
+        read -p "> " msg || exit 1
+        data="{\"username\": \"$username\", \"avatar_url\": \"$avatar_url\", \"content\": \"$msg\" }"
+        curl -X POST -H "Content-Type: application/json" -d "$data" $webhook_url
+    done
+elif [ "$1" = "adduser" ]; then save "username" "avatar url" "$HOME/.config/discordwebhooks/users.bm";
+elif [ "$1" = "addchannel" ]; then save "channel name" "webhook url" "$HOME/.config/discordwebhooks/channels.bm";
+elif [ "$1" = "deleteuser" ]; then delete "$HOME/.config/discordwebhooks/users.bm";
+elif [ "$1" = "deletechannel" ]; then delete "$HOME/.config/discordwebhooks/channels.bm";
+fi
+#+end_src
+
+* ef
+#+begin_src sh :tangle ef
+#!/bin/sh
+# EF: Edit bookmarked files
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 31/08/2021
+# License: GPL v3
+
+ef() {
+    #TODO Prompt for missing args
+    case "$1" in
+        add) echo -e "$2\n$(pwd)/$3" | bm add editfiles;;
+        rm) bm rm "$2" editfiles;;
+        list) bm list editfiles;;
+        reload) source "$NREPOS/n0s1.core/ef" && echo "Reloaded ef";;
+        *) vim $(bm get "$1" editfiles);;
+    esac
+}
+#+end_src
+
+* exprq
+#+begin_src sh :tangle exprq
+#!/bin/bash
+# exprx: syntactic sugar for expr to test if regex matches
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Fri 17 Sep 2021 14:48:03 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+exprq() { expr "$1" : "$2" 1>/dev/null; }
+#+end_src
+
+* findpkg
+#+begin_src sh :tangle findpkg
+#!/bin/sh
+# FINDPKG: Attempts to find a package using available package managers
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 17/10/2020
+# License: MIT License
+
+findpkg() {
+    local found_pkg_mgr=false
+    if command -v pacman >/dev/null 2>&1; then
+        found_pkg_mgr=true
+        echo -e "`tput setaf 2`Searching using pacman ($(command -v pacman))`tput sgr0`"
+        sudo pacman -Sy && pacman -Ss $@ && return
+        echo "`tput setaf 3`Could not find package using pacman`tput sgr0`"
+    else
+        echo "`tput setaf 3`Could not find pacman`tput sgr0`"
+    fi
+
+    if command -v yay >/dev/null 2>&1; then
+        found_pkg_mgr=true
+        echo -e "`tput setaf 2`Searching using yay ($(command -v yay))`tput sgr0`"
+        yay -Sy && local list=$(yay -Ss $@)
+        [[ $list != '' ]] && echo "$list" && return
+        echo `tput setaf 3`"Could not find package using yay`tput sgr0`"
+    else
+        echo `tput setaf 3`"Could not find yay`tput sgr0`"
+    fi
+
+    if $found_pkg_mgr; then
+        echo "`tput setaf 1`Could not find package using available package managers`tput sgr0`"
+    else
+        echo "`tput setaf 1`Could not find any valid package managers`tput sgr0`"
+    fi
+}
+#+end_src
+
+* fzy
+#+begin_src sh :tangle fzy
+#!/bin/bash
+# FZY: Command Line Fuzzy Finder
+# Created: 29/10/2020
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# License: MIT License
+
+hideinput() { [ -t 0 ] && save_state=$(stty -g) && stty -echo -icanon time 0 min 0 && echo -ne "\e[?1049h\r" 1>&2; }
+cleanup() { [ -t 0 ] && stty "$save_state" < /dev/tty && echo -ne "\e[?1049l" 1>&2 && echo "$result"; }
+trap 'cleanup < /dev/tty' < /dev/tty EXIT
+trap 'hideinput < /dev/tty' CONT
+hideinput < /dev/tty
+
+input="$(< /dev/stdin)";
+height="$(tput lines)";
+inum=$(echo "$input" | wc -l);
+fnum=$inum;
+clearline=$(echo -e "\033[2K")
+valid='0-9a-zA-Z '
+str=""; regex=""; regex2=""; result="";
+row=1; col=1; cur=1; scrolling=1;
+while true;
+do
+    range="$row,$((row+height-3))p;$((row+height-3))q";
+    filtered=$(echo "$input" | grep ".*$regex" | sed -n $range 2>/dev/null | sed -e "s/^.*/  &/");
+    frange="$(echo "$filtered" | wc -l)";
+    curpos=$((frange-cur+1));
+    echo "$filtered" | cut -c$col- | grep -E --color=always "$regex2" | tac | sed -e $curpos"s/^  \(.*\)/> \1/;s/^.*/$clearline&/" 1>&2;
+    echo "$clearline  $fnum/$inum" 1>&2;
+    tput cnorm
+    [ $scrolling = 1 ] && read -r -sn200 -t 0.0001 junk < /dev/tty;
+    read -r -p "$clearline> $str" -sn1 < /dev/tty;
+    read -r -sn3 -t 0.001 k1 < /dev/tty;
+    REPLY+=$k1;
+    case "$REPLY" in
+        '')
+            result=$(echo "$filtered" | sed -n "${cur}s/  //p;${cur}q");
+            exit;
+            ;;
+        $'\e[C'|$'\e0C') col=$((col+1)) && scrolling=1 ;;
+        $'\e[D'|$'\e0D') [[ $col -gt 1 ]] && col=$((col-1)) && scrolling=1 ;;
+        $'\e[B'|$'\e0B') [[ $cur -ge 1 ]] && cur=$((cur-1)) && scrolling=1 ;;
+        $'\e[A'|$'\e0A') [[ $cur -le $fnum ]] && cur=$((cur+1)) && scrolling=1 ;;
+        $'\e[1~'|$'\e0H'|$'\e[H') row=1 ;;
+        $'\e[4~'|$'\e0F'|$'\e[F') row=$fnum ;;
+        *)
+            char=$(echo "$REPLY" | hexdump -c | tr -d '[:space:]');
+            if [[ $char = "0000000033\n0000002" ]]; then
+                exit 1;
+            elif [[ $char = "0000000177\n0000002" ]] && [[ ${#str} -gt 0 ]]; then
+                str="${str::-1}";
+                scrolling=1;
+            else
+                filtchar=$(echo "$REPLY" | hexdump -c | awk '{ print $2 }')
+                result="$filtchar"
+                if [[ "$filtchar" != "033" ]] && [[ "$filtchar" != "177" ]] && [[ ! "$REPLY"  =~ [^$valid] ]]; then
+                    str="$str$REPLY" && row=1;
+                    scrolling=0;
+                fi
+            fi
+            regex=$(echo "$str" | sed "s/\(.\)/\1.*/g");
+            regex2=$(echo "$str" | sed "s/\(.\)/\1|/g");
+            fnum=$(echo "$input" | grep -c ".*$regex");
+            ;;
+    esac
+    [[ $((frange-cur+1)) -lt 1 ]] && row=$((row+1)) && cur=$((cur-1));
+    [[ $cur -lt 1 ]] && row=$((row-1)) && cur=$((cur+1));
+    [[ $cur -gt $fnum ]] && cur=$fnum;
+    [[ $((row-fnum+frange)) -gt 1 ]] && row=$((row-1));
+    [[ $row -lt 1 ]] && row=1;
+    tput civis
+    tput cup 0 0
+    [[ $fnum -lt $height ]] && yes "$clearline" | sed "$((height-fnum-2))q" 1>&2;
+done
+#+end_src
+
+* fzy_lite
+#+begin_src sh :tangle fzy_lite
+#!/bin/sh
+# FZY_Lite: 10 SLOC Command Line Fuzzy Finder
+# Copyright: Nan0Scho1ar (Christopher Mackinga) MIT License (29/10/2020)
+
+fzy_lite() {
+    str=""; input="$(< /dev/stdin)"; echo -e "\e[?1049h"; while true; do
+    filtered=$(echo "$input" | grep ".*$(echo "$str" | sed "s/\(.\)/\1.*/g")");
+    echo "$filtered"; read -p "> $str" -n 1 -s < /dev/tty;
+    char=$(echo $REPLY | hexdump -c | awk '{ print $2 }');
+    [[ $char = "\n" ]] && echo -e "\e[?1049l$filtered" && return 0
+    [[ $char = "177" ]] && [[ $str = "" ]] && echo -e "\e[?1049l" && return 1
+    [[ $char = "177" ]] && str="${str::-1}" || str="$str$REPLY";
+    yes '' | sed "$(tput lines)q"; done
+}
+#+end_src
+
+* hackless
+#+begin_src sh :tangle hackless
+#!/bin/sh
+# LESS: The hackable less
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 30/10/2020
+# License: MIT License
+
+hackless() {
+    lines="$(cat "$1" || cat /dev/stdin)"
+    row=1 && col=1 && regex="" &&
+    height="$(tput lines)" && cols=$(tput cols) &&
+    numln="$(echo "$lines" | wc -l)" &&
+    maxlen=$(echo "$lines" | awk '{ print length }' | sort -n | tail -1) &&
+    lastln="$([[ $numln -ge $height ]] && echo $((numln-height+2)) || echo 1)" &&
+    lastcol="$([[ $maxlen -ge $cols ]] && echo $((maxlen-cols+4)) || echo 1)" &&
+    lines="$lines$(echo; yes '~' | sed -n "1,${cols}p;${cols}q")" &&
+    echo -e "\e[?1049h" || return 1
+    while true; do
+        echo "$lines" | sed -n "$row,$((row+height-2))p;$((row+height-2))q" \
+            | cut -c $col-$((col+cols-1)) | grep --colour=always "^\|$regex";
+        [[ $row -eq $lastln ]] && cur="$(tput rev)END$(tput sgr0)" || cur=":"
+        read -rsn1 -p "$cur" < /dev/tty char && echo -e "$(tput el1)\r"
+        case $char in
+            'q') echo -e "\e[?1049l" && return;;
+            'k') [[ $row -gt 1 ]] && row=$((row-1));;
+            'j') [[ $row -lt $lastln ]] && row=$((row+1));;
+            'h') [[ $col -gt 1 ]] && col=$((col-1));;
+            'l') col=$((col+1));;
+            'g') row=1;;
+            'G') row=$lastln;;
+            '0') col=1;;
+            '$') col=$lastcol;;
+            '/') read -p "/" < /dev/tty regex;;
+        esac
+    done
+}
+#+end_src
+
+* hist
+#+begin_src sh :tangle hist
+#!/bin/sh
+# HIST: Shell history made easy
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 06/11/2020
+# License: MIT License
+
+[ $SHELL = "/bin/zsh" ] &&
+    histfile="$XDG_CONFIG_HOME/zsh/.zhistory" ||
+    histfile="$HOME/.history"
+
+sep="; "
+cmdlist="$1"
+
+if [ -z "$1" ]; then
+    cat --number "$histfile" | less
+    exit
+elif [ "$1" = '-a' ]; then
+    sep=" && "
+    cmdlist="$2"
+elif [[ "$1" =~ "-h|--help" ]]; then
+    echo "hist            list history"
+    echo "hist 50..55     run cmd list ; seperated"
+    echo "hist -a 50..55  run cmd list && seperated"
+    exit
+fi
+# 50..55
+if [[ $cmdlist =~ ^[0-9]+\.\.[0-9]+$ ]]; then
+    START="$(echo $cmdlist | sed 's/^\([0-9]*\)\.\.\([0-9]*\)$/\1/')"
+    END="$(echo $cmdlist | sed 's/^\([0-9]*\)\.\.\([0-9]*\)$/\2/')"
+    final=""
+    for i in $(eval echo "{$START..$END}"); do
+        cmd=$(cat --number $histfile | sed -n "s/^\s*${i}\t\(.*\)/\1/p")
+        [ -z "$final" ] && final="$cmd" || final="$final$sep$cmd"
+    done
+    echo "$final"
+    eval "$final"
+fi
+#+end_src
+
+* keyrepeat
+#+begin_src sh :tangle keyrepeat
+#!/bin/bash
+
+hideinput()
+{
+    if [ -t 0 ]; then
+        save_state=$(stty -g)
+        stty -echo -icanon time 0 min 0
+        echo -ne "\e[?1049h\r" 1>&2;
+    fi
+}
+
+cleanup()
+{
+    if [ -t 0 ]; then
+        stty "$save_state" < /dev/tty
+        echo -ne "\e[?1049l" 1>&2;
+        echo "$result"
+    fi
+}
+
+trap 'cleanup < /dev/tty' < /dev/tty EXIT
+trap 'hideinput < /dev/tty' CONT
+hideinput < /dev/tty
+
+while true
+do
+    read -r -sn1000 -t 0.001 junk < /dev/tty;
+    read -r -sn1 < /dev/tty;
+    read -r -sn3 -t 0.001 k1 < /dev/tty;
+    REPLY+=$k1;
+    case "$REPLY" in
+        '')
+            echo "Enter pressed"
+            ;;
+        $'\e[C'|$'\e0C') echo "Right arrow pressed";;
+        $'\e[D'|$'\e0D') echo "Left arrow pressed";;
+        $'\e[B'|$'\e0B') echo "Down arrow pressed";;
+        $'\e[A'|$'\e0A') echo "Up arrow pressed";;
+        $'\e[1~'|$'\e0H'|$'\e[H') echo "Home pressed";;
+        $'\e[4~'|$'\e0F'|$'\e[F') echo "End pressed";;
+        *)
+            char=$(echo "$REPLY" | hexdump -c | tr -d '[:space:]');
+            if [[ $char = "0000000033\n0000002" ]]; then
+                echo "Escape pressed"
+                exit;
+            elif [[ $char = "0000000177\n0000002" ]] && [[ ${#str} -gt 0 ]]; then
+                echo "Backspace pressed"
+            else
+                filtchar=$(echo "$REPLY" | hexdump -c | awk '{ print $2 }')
+                result="$filtchar"
+                if [[ "$filtchar" != "033" ]] && [[ "$filtchar" != "177" ]] && [[ ! "$REPLY"  =~ [^$valid] ]]; then
+                    echo "$REPLY pressed"
+                fi
+            fi
+            ;;
+    esac
+    sleep 0.1
+done
+#+end_src
+
+* n0s1
+#+begin_src sh :tangle n0s1
+#!/bin/bash
+
+green=`tput setaf 2`
+red=`tput setaf 1`
+yellow=`tput setaf 3`
+blue=`tput setaf 4`
+magenta=`tput setaf 5`
+cyan=`tput setaf 6`
+white=`tput setaf 7`
+blink=`tput blink`
+reset=`tput sgr0`
+
+nan0S() {
+    echo '                    ___  ____  '
+    echo ' _ __   __ _ _ __  / _ \/ ___| '
+    echo '| `_ \ / _` | `_ \| | | \___ \ '
+    echo '| | | | (_| | | | | |_| |___) |'
+    echo '|_| |_|\__,_|_| |_|\___/|____/ '
+}
+
+n0s1_tiny() {
+    echo '    /\   /\   '
+    echo '   //\\ //\\  '
+    echo '  //  \V/  \\ '
+    echo ' //   /A\   \\ '
+    echo '//----/_\____\\'
+    echo '/-------------\'
+}
+
+n0s1() {
+    echo '       /\     /\        '
+    echo '      /  \   /  \       '
+    echo '     / /\ \ / /\ \      '
+    echo '    / /  \ X /  \ \     '
+    echo '   / /    X X    \ \    '
+    echo '  / /    / X \    \ \   '
+    echo ' / /    /_/_\_\    \ \  '
+    echo '/_/______/___\      \ \ '
+    echo ' /      /____________\_\'
+    echo '/_____________________\ '
+}
+
+n0s1_large() {
+    echo '              /\           /\                '
+    echo '             /  \         /  \               '
+    echo '            /    \       /    \              '
+    echo '           /      \     /      \             '
+    echo '          /   /\   \   /   /\   \            '
+    echo '         /   /  \   \ /   /  \   \           '
+    echo '        /   /    \   X   /    \   \          '
+    echo '       /   /      \ / \ /      \   \         '
+    echo '      /   /        X   X        \   \        '
+    echo '     /   /        / \ / \        \   \       '
+    echo '    /   /        /   X   \        \   \      '
+    echo '   /   /        /   / \   \        \   \     '
+    echo '  /   /        /___/___\___\        \   \    '
+    echo ' /   /            /     \            \   \   '
+    echo '/___/____________/_______\            \   \  '
+    echo '   /            /                      \   \ '
+    echo '  /            /________________________\___\'
+    echo ' /                                       \   '
+    echo '/_________________________________________\  '
+}
+
+usegreen=0
+centered=0
+large=0
+banner=0
+
+while getopts "gclb" OPT; do
+    if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
+      OPT="${OPTARG%%=*}"       # extract long option name
+      OPTARG="${OPTARG#$OPT}"   # extract long option argument (may be empty)
+      OPTARG="${OPTARG#=}"      # if long option argument, remove assigning `=`
+    fi
+    case "$OPT" in
+        g) usegreen=1 ;;
+        c) centered=1 ;;
+        l) large=1 ;;
+        b) banner=1 ;;
+        ??*) die "Illegal option --$OPT" ;;  # bad long option
+        ?) exit 2 ;;  # bad short option (error reported via getopts)
+  esac
+done
+shift $((OPTIND-1)) # remove parsed options and args from $@ list
+
+if [ $large = 1 ]; then
+    text="$(n0s1_large)"
+else
+    text="$(n0s1)"
+fi
+
+
+if [ $usegreen = 1 ]; then
+    text="${green}
+${text}
+${reset}"
+fi
+
+if [ $banner = 1 ]; then
+    text="${text}
+$(nan0S)"
+fi
+
+if [ $centered = 1 ]; then
+    echo "${text}" | center
+else
+    echo "${text}"
+fi
+#+end_src
+
+* n0s1m
+#+begin_src sh :tangle n0s1m
+#!/bin/bash
+#n0s1m: n0s1 menu
+
+# Bish
+#+end_src
+
+* org_ingest
+#+begin_src sh :tangle org_ingest
+#!/bin/bash
+# Ingest a directory full of files to tangled script blocks in a org file.
+
+dir="$([ -z $1 ] && pwd || echo $1)"
+while IFS= read -r fname; do
+    echo "* $fname"
+    echo "#+begin_src sh :tangle $fname"
+    cat "$fname"
+    echo "#+end_src"
+    echo
+done < <(ls -p "$dir" | grep -v /)
+#+end_src
+
+* pfetch
+#+begin_src sh :tangle pfetch
+#!/bin/sh
+#
+# pfetch - Simple POSIX sh fetch script.
+
+# Wrapper around all escape sequences used by pfetch to allow for
+# greater control over which sequences are used (if any at all).
+esc() {
+    case $1 in
+        CUU) e="${esc_c}[${2}A" ;; # cursor up
+        CUD) e="${esc_c}[${2}B" ;; # cursor down
+        CUF) e="${esc_c}[${2}C" ;; # cursor right
+        CUB) e="${esc_c}[${2}D" ;; # cursor left
+
+        # text formatting
+        SGR)
+            case ${PF_COLOR:=1} in
+                (1)
+                    e="${esc_c}[${2}m"
+                ;;
+
+                (0)
+                    # colors disabled
+                    e=
+                ;;
+            esac
+        ;;
+
+        # line wrap
+        DECAWM)
+            case $TERM in
+                (dumb | minix | cons25)
+                    # not supported
+                    e=
+                ;;
+
+                (*)
+                    e="${esc_c}[?7${2}"
+                ;;
+            esac
+        ;;
+    esac
+}
+
+# Print a sequence to the terminal.
+esc_p() {
+    esc "$@"
+    printf '%s' "$e"
+}
+
+# This is just a simple wrapper around 'command -v' to avoid
+# spamming '>/dev/null' throughout this function. This also guards
+# against aliases and functions.
+has() {
+    _cmd=$(command -v "$1") 2>/dev/null || return 1
+    [ -x "$_cmd" ] || return 1
+}
+
+log() {
+    # The 'log()' function handles the printing of information.
+    # In 'pfetch' (and 'neofetch'!) the printing of the ascii art and info
+    # happen independently of each other.
+    #
+    # The size of the ascii art is stored and the ascii is printed first.
+    # Once the ascii is printed, the cursor is located right below the art
+    # (See marker $[1]).
+    #
+    # Using the stored ascii size, the cursor is then moved to marker $[2].
+    # This is simply a cursor up escape sequence using the "height" of the
+    # ascii art.
+    #
+    # 'log()' then moves the cursor to the right the "width" of the ascii art
+    # with an additional amount of padding to add a gap between the art and
+    # the information (See marker $[3]).
+    #
+    # When 'log()' has executed, the cursor is then located at marker $[4].
+    # When 'log()' is run a second time, the next line of information is
+    # printed, moving the cursor to marker $[5].
+    #
+    # Markers $[4] and $[5] repeat all the way down through the ascii art
+    # until there is no more information left to print.
+    #
+    # Every time 'log()' is called the script keeps track of how many lines
+    # were printed. When printing is complete the cursor is then manually
+    # placed below the information and the art according to the "heights"
+    # of both.
+    #
+    # The math is simple: move cursor down $((ascii_height - info_height)).
+    # If the aim is to move the cursor from marker $[5] to marker $[6],
+    # plus the ascii height is 8 while the info height is 2 it'd be a move
+    # of 6 lines downwards.
+    #
+    # However, if the information printed is "taller" (takes up more lines)
+    # than the ascii art, the cursor isn't moved at all!
+    #
+    # Once the cursor is at marker $[6], the script exits. This is the gist
+    # of how this "dynamic" printing and layout works.
+    #
+    # This method allows ascii art to be stored without markers for info
+    # and it allows for easy swapping of info order and amount.
+    #
+    # $[2] ___      $[3] goldie@KISS
+    # $[4](.· |     $[5] os KISS Linux
+    #     (<> |
+    #    / __  \
+    #   ( /  \ /|
+    #  _/\ __)/_)
+    #  \/-____\/
+    # $[1]
+    #
+    # $[6] /home/goldie $
+
+    # End here if no data was found.
+    [ "$2" ] || return
+
+    # Store the value of '$1' as we reset the argument list below.
+    name=$1
+
+    # Use 'set --' as a means of stripping all leading and trailing
+    # white-space from the info string. This also normalizes all
+    # white-space inside of the string.
+    #
+    # Disable the shellcheck warning for word-splitting
+    # as it's safe and intended ('set -f' disables globbing).
+    # shellcheck disable=2046,2086
+    {
+        set -f
+        set +f -- $2
+        info=$*
+    }
+
+    # Move the cursor to the right, the width of the ascii art with an
+    # additional gap for text spacing.
+    esc_p CUF "$ascii_width"
+
+    # Print the info name and color the text.
+    esc_p SGR "3${PF_COL1-4}";
+    esc_p SGR 1
+    printf '%s' "$name"
+    esc_p SGR 0
+
+    # Print the info name and info data separator.
+    printf %s "$PF_SEP"
+
+    # Move the cursor backward the length of the *current* info name and
+    # then move it forwards the length of the *longest* info name. This
+    # aligns each info data line.
+    esc_p CUB "${#name}"
+    esc_p CUF "${PF_ALIGN:-$info_length}"
+
+    # Print the info data, color it and strip all leading whitespace
+    # from the string.
+    esc_p SGR "3${PF_COL2-7}"
+    printf '%s' "$info"
+    esc_p SGR 0
+    printf '\n'
+
+    # Keep track of the number of times 'log()' has been run.
+    info_height=$((${info_height:-0} + 1))
+}
+
+get_title() {
+    # Username is retrieved by first checking '$USER' with a fallback
+    # to the 'id -un' command.
+    user=${USER:-$(id -un)}
+
+    # Hostname is retrieved by first checking '$HOSTNAME' with a fallback
+    # to the 'hostname' command.
+    #
+    # Disable the warning about '$HOSTNAME' being undefined in POSIX sh as
+    # the intention for using it is allowing the user to overwrite the
+    # value on invocation.
+    # shellcheck disable=SC2039
+    host=${HOSTNAME:-${host:-$(hostname)}}
+
+    # If the hostname is still not found, fallback to the contents of the
+    # /etc/hostname file.
+    [ "$host" ] || read -r host < /etc/hostname
+
+    # Add escape sequences for coloring to user and host name. As we embed
+    # them directly in the arguments passed to log(), we cannot use esc_p().
+    esc SGR 1
+    user=$e$user
+    esc SGR "3${PF_COL3:-1}"
+    user=$e$user
+    esc SGR 1
+    user=$user$e
+    esc SGR 1
+    host=$e$host
+    esc SGR "3${PF_COL3:-1}"
+    host=$e$host
+
+    log "${user}@${host}" " " >&6
+}
+
+get_os() {
+    # This function is called twice, once to detect the distribution name
+    # for the purposes of picking an ascii art early and secondly to display
+    # the distribution name in the info output (if enabled).
+    #
+    # On first run, this function displays _nothing_, only on the second
+    # invocation is 'log()' called.
+    [ "$distro" ] && {
+        log os "$distro" >&6
+        return
+    }
+
+    case $os in
+        (Linux*)
+            # Some Linux distributions (which are based on others)
+            # fail to identify as they **do not** change the upstream
+            # distribution's identification packages or files.
+            #
+            # It is senseless to add a special case in the code for
+            # each and every distribution (which _is_ technically no
+            # different from what it is based on) as they're either too
+            # lazy to modify upstream's identification files or they
+            # don't have the know-how (or means) to ship their own
+            # lsb-release package.
+            #
+            # This causes users to think there's a bug in system detection
+            # tools like neofetch or pfetch when they technically *do*
+            # function correctly.
+            #
+            # Exceptions are made for distributions which are independent,
+            # not based on another distribution or follow different
+            # standards.
+            #
+            # This applies only to distributions which follow the standard
+            # by shipping unmodified identification files and packages
+            # from their respective upstreams.
+            if has lsb_release; then
+                distro=$(lsb_release -sd)
+
+            # Android detection works by checking for the existence of
+            # the follow two directories. I don't think there's a simpler
+            # method than this.
+            elif [ -d /system/app ] && [ -d /system/priv-app ]; then
+                distro="Android $(getprop ro.build.version.release)"
+
+            else
+                # This used to be a simple '. /etc/os-release' but I believe
+                # this is insecure as we blindly executed whatever was in the
+                # file. This parser instead simply handles 'key=val', treating
+                # the file contents as plain-text.
+                while IFS='=' read -r key val; do
+                    case $key in
+                        (PRETTY_NAME)
+                            distro=$val
+                        ;;
+                    esac
+                done < /etc/os-release
+            fi
+
+            # 'os-release' and 'lsb_release' sometimes add quotes
+            # around the distribution name, strip them.
+            distro=${distro##[\"\']}
+            distro=${distro%%[\"\']}
+
+            # Special cases for (independent) distributions which
+            # don't follow any os-release/lsb standards whatsoever.
+            has crux && distro=$(crux)
+            has guix && distro='Guix System'
+
+            # Check to see if we're running Bedrock Linux which is
+            # very unique. This simply checks to see if the user's
+            # PATH contains a Bedrock specific value.
+            case $PATH in
+                (*/bedrock/cross/*)
+                    distro='Bedrock Linux'
+                ;;
+            esac
+
+            # Check to see if Linux is running in Windows 10 under
+            # WSL1 (Windows subsystem for Linux [version 1]) and
+            # append a string accordingly.
+            #
+            # If the kernel version string ends in "-Microsoft",
+            # we're very likely running under Windows 10 in WSL1.
+            if [ "$WSLENV" ]; then
+                distro="${distro}${WSLENV+ on Windows 10 [WSL2]}"
+
+            # Check to see if Linux is running in Windows 10 under
+            # WSL2 (Windows subsystem for Linux [version 2]) and
+            # append a string accordingly.
+            #
+            # This checks to see if '$WSLENV' is defined. This
+            # appends the Windows 10 string even if '$WSLENV' is
+            # empty. We only need to check that is has been _exported_.
+            elif [ -z "${kernel%%*-Microsoft}" ]; then
+                distro="$distro on Windows 10 [WSL1]"
+            fi
+        ;;
+
+        (Darwin*)
+            # Parse the SystemVersion.plist file to grab the macOS
+            # version. The file is in the following format:
+            #
+            # <key>ProductVersion</key>
+            # <string>10.14.6</string>
+            #
+            # 'IFS' is set to '<>' to enable splitting between the
+            # keys and a second 'read' is used to operate on the
+            # next line directly after a match.
+            #
+            # '_' is used to nullify a field. '_ _ line _' basically
+            # says "populate $line with the third field's contents".
+            while IFS='<>' read -r _ _ line _; do
+                case $line in
+                    # Match 'ProductVersion' and read the next line
+                    # directly as it contains the key's value.
+                    ProductVersion)
+                        IFS='<>' read -r _ _ mac_version _
+                        break
+                    ;;
+                esac
+            done < /System/Library/CoreServices/SystemVersion.plist
+
+            # Use the ProductVersion to determine which macOS/OS X codename
+            # the system has. As far as I'm aware there's no "dynamic" way
+            # of grabbing this information.
+            case $mac_version in
+                (10.4*)  distro='Mac OS X Tiger' ;;
+                (10.5*)  distro='Mac OS X Leopard' ;;
+                (10.6*)  distro='Mac OS X Snow Leopard' ;;
+                (10.7*)  distro='Mac OS X Lion' ;;
+                (10.8*)  distro='OS X Mountain Lion' ;;
+                (10.9*)  distro='OS X Mavericks' ;;
+                (10.10*) distro='OS X Yosemite' ;;
+                (10.11*) distro='OS X El Capitan' ;;
+                (10.12*) distro='macOS Sierra' ;;
+                (10.13*) distro='macOS High Sierra' ;;
+                (10.14*) distro='macOS Mojave' ;;
+                (10.15*) distro='macOS Catalina' ;;
+                (*)      distro='macOS' ;;
+            esac
+
+            distro="$distro $mac_version"
+        ;;
+
+        (Haiku)
+            # Haiku uses 'uname -v' for version information
+            # instead of 'uname -r' which only prints '1'.
+            distro=$(uname -sv)
+        ;;
+
+        (Minix|DragonFly)
+            distro="$os $kernel"
+
+            # Minix and DragonFly don't support the escape
+            # sequences used, clear the exit trap.
+            trap '' EXIT
+        ;;
+
+        (SunOS)
+            # Grab the first line of the '/etc/release' file
+            # discarding everything after '('.
+            IFS='(' read -r distro _ < /etc/release
+        ;;
+
+        (OpenBSD*)
+            # Show the OpenBSD version type (current if present).
+            # kern.version=OpenBSD 6.6-current (GENERIC.MP) ...
+            IFS=' =' read -r _ distro openbsd_ver _ <<-EOF
+				$(sysctl kern.version)
+			EOF
+
+            distro="$distro $openbsd_ver"
+        ;;
+
+        FreeBSD)
+            distro="$os $(freebsd-version)"
+        ;;
+
+        (*)
+            # Catch all to ensure '$distro' is never blank.
+            # This also handles the BSDs.
+            distro="$os $kernel"
+        ;;
+    esac
+}
+
+get_kernel() {
+    case $os in
+        # Don't print kernel output on some systems as the
+        # OS name includes it.
+        (*BSD*|Haiku|Minix)
+            return
+        ;;
+    esac
+
+    # '$kernel' is the cached output of 'uname -r'.
+    log kernel "$kernel" >&6
+}
+
+get_host() {
+    case $os in
+        (Linux*)
+            # Despite what these files are called, version doesn't
+            # always contain the version nor does name always contain
+            # the name.
+            read -r name    < /sys/devices/virtual/dmi/id/product_name
+            read -r version < /sys/devices/virtual/dmi/id/product_version
+            read -r model   < /sys/firmware/devicetree/base/model
+
+            host="$name $version $model"
+        ;;
+
+        (Darwin* | FreeBSD* | DragonFly*)
+            host=$(sysctl -n hw.model)
+        ;;
+
+        (NetBSD*)
+            host=$(sysctl -n machdep.dmi.system-vendor \
+                             machdep.dmi.system-product)
+        ;;
+
+        (OpenBSD*)
+            host=$(sysctl -n hw.version)
+        ;;
+
+        (*BSD* | Minix)
+            host=$(sysctl -n hw.vendor hw.product)
+        ;;
+    esac
+
+    # Turn the host string into an argument list so we can iterate
+    # over it and remove OEM strings and other information which
+    # shouldn't be displayed.
+    #
+    # Disable the shellcheck warning for word-splitting
+    # as it's safe and intended ('set -f' disables globbing).
+    # shellcheck disable=2046,2086
+    {
+        set -f
+        set +f -- $host
+        host=
+    }
+
+    # Iterate over the host string word by word as a means of stripping
+    # unwanted and OEM information from the string as a whole.
+    #
+    # This could have been implemented using a long 'sed' command with
+    # a list of word replacements, however I want to show that something
+    # like this is possible in pure sh.
+    #
+    # This string reconstruction is needed as some OEMs either leave the
+    # identification information as "To be filled by OEM", "Default",
+    # "undefined" etc and we shouldn't print this to the screen.
+    for word do
+        # This works by reconstructing the string by excluding words
+        # found in the "blacklist" below. Only non-matches are appended
+        # to the final host string.
+        case $word in
+           (To      | [Bb]e      | [Ff]illed | [Bb]y  | O.E.M.  | OEM  |\
+            Not     | Applicable | Specified | System | Product | Name |\
+            Version | Undefined  | Default   | string | INVALID | �    | os )
+                continue
+            ;;
+        esac
+
+        host="$host$word "
+    done
+
+    # '$arch' is the cached output from 'uname -m'.
+    log host "${host:-$arch}" >&6
+}
+
+get_uptime() {
+    # Uptime works by retrieving the data in total seconds and then
+    # converting that data into days, hours and minutes using simple
+    # math.
+    case $os in
+        (Linux* | Minix*)
+            IFS=. read -r s _ < /proc/uptime
+        ;;
+
+        Darwin* | *BSD* | DragonFly*)
+            s=$(sysctl -n kern.boottime)
+
+            # Extract the uptime in seconds from the following output:
+            # [...] { sec = 1271934886, usec = 667779 } Thu Apr 22 12:14:46 2010
+            s=${s#*=}
+            s=${s%,*}
+
+            # The uptime format from 'sysctl' needs to be subtracted from
+            # the current time in seconds.
+            s=$(($(date +%s) - s))
+        ;;
+
+        (Haiku)
+            # The boot time is returned in microseconds, convert it to
+            # regular seconds.
+            s=$(($(system_time) / 1000000))
+        ;;
+
+        (SunOS)
+            # Split the output of 'kstat' on '.' and any white-space
+            # which exists in the command output.
+            #
+            # The output is as follows:
+            # unix:0:system_misc:snaptime	14809.906993005
+            #
+            # The parser extracts:          ^^^^^
+            IFS='	.' read -r _ s _ <<-EOF
+				$(kstat -p unix:0:system_misc:snaptime)
+			EOF
+        ;;
+
+        (IRIX)
+            # Grab the uptime in a pretty format. Usually,
+            # 00:00:00 from the 'ps' command.
+            t=$(LC_ALL=POSIX ps -o etime= -p 1)
+
+            # Split the pretty output into days or hours
+            # based on the uptime.
+            case $t in
+                (*-*)   d=${t%%-*} t=${t#*-} ;;
+                (*:*:*) h=${t%%:*} t=${t#*:} ;;
+            esac
+
+            h=${h#0} t=${t#0}
+
+            # Convert the split pretty fields back into
+            # seconds so we may re-convert them to our format.
+            s=$((${d:-0}*86400 + ${h:-0}*3600 + ${t%%:*}*60 + ${t#*:}))
+        ;;
+    esac
+
+    # Convert the uptime from seconds into days, hours and minutes.
+    d=$((s / 60 / 60 / 24))
+    h=$((s / 60 / 60 % 24))
+    m=$((s / 60 % 60))
+
+    # Only append days, hours and minutes if they're non-zero.
+    case "$d" in ([!0]*) uptime="${uptime}${d}d "; esac
+    case "$h" in ([!0]*) uptime="${uptime}${h}h "; esac
+    case "$m" in ([!0]*) uptime="${uptime}${m}m "; esac
+
+    log uptime "${uptime:-0m}" >&6
+}
+
+get_pkgs() {
+    # This works by first checking for which package managers are
+    # installed and finally by printing each package manager's
+    # package list with each package one per line.
+    #
+    # The output from this is then piped to 'wc -l' to count each
+    # line, giving us the total package count of whatever package
+    # managers are installed.
+    #
+    # Backticks are *required* here as '/bin/sh' on macOS is
+    # 'bash 3.2' and it can't handle the following:
+    #
+    # var=$(
+    #    code here
+    # )
+    #
+    # shellcheck disable=2006
+    packages=`
+        case $os in
+            (Linux*)
+                # Commands which print packages one per line.
+                has bonsai     && bonsai list
+                has crux       && pkginfo -i
+                has pacman-key && pacman -Qq
+                has dpkg       && dpkg-query -f '.\n' -W
+                has rpm        && rpm -qa
+                has xbps-query && xbps-query -l
+                has apk        && apk info
+                has guix       && guix package --list-installed
+                has opkg       && opkg list-installed
+
+                # Directories containing packages.
+                has kiss       && printf '%s\n' /var/db/kiss/installed/*/
+                has cpt-list   && printf '%s\n' /var/db/cpt/installed/*/
+                has brew       && printf '%s\n' "$(brew --cellar)/"*
+                has emerge     && printf '%s\n' /var/db/pkg/*/*/
+                has pkgtool    && printf '%s\n' /var/log/packages/*
+                has eopkg      && printf '%s\n' /var/lib/eopkg/package/*
+
+                # 'nix' requires two commands.
+                has nix-store  && {
+                    nix-store -q --requisites /run/current-system/sw
+                    nix-store -q --requisites ~/.nix-profile
+                }
+            ;;
+
+            (Darwin*)
+                # Commands which print packages one per line.
+                has pkgin      && pkgin list
+
+                # Directories containing packages.
+                has brew       && printf '%s\n' /usr/local/Cellar/*
+
+                # 'port' prints a single line of output to 'stdout'
+                # when no packages are installed and exits with
+                # success causing a false-positive of 1 package
+                # installed.
+                #
+                # 'port' should really exit with a non-zero code
+                # in this case to allow scripts to cleanly handle
+                # this behavior.
+                has port       && {
+                    pkg_list=$(port installed)
+
+                    case "$pkg_list" in
+                        ("No ports are installed.")
+                            # do nothing
+                        ;;
+
+                        (*)
+                            printf '%s\n' "$pkg_list"
+                        ;;
+                    esac
+                }
+            ;;
+
+            (FreeBSD*|DragonFly*)
+                pkg info
+            ;;
+
+            (OpenBSD*)
+                printf '%s\n' /var/db/pkg/*/
+            ;;
+
+            (NetBSD*)
+                pkg_info
+            ;;
+
+            (Haiku)
+                printf '%s\n' /boot/system/package-links/*
+            ;;
+
+            (Minix)
+                printf '%s\n' /usr/pkg/var/db/pkg/*/
+            ;;
+
+            (SunOS)
+                has pkginfo && pkginfo -i
+                has pkg     && pkg list
+            ;;
+
+            (IRIX)
+                versions -b
+            ;;
+        esac | wc -l
+    `
+
+    case $os in
+        # IRIX's package manager adds 3 lines of extra
+        # output which we must account for here.
+        (IRIX)
+            packages=$((packages - 3))
+        ;;
+    esac
+
+    case $packages in
+        (1?*|[2-9]*)
+            log pkgs "$packages" >&6
+        ;;
+    esac
+}
+
+get_memory() {
+    case $os in
+        # Used memory is calculated using the following "formula":
+        # MemUsed = MemTotal + Shmem - MemFree - Buffers - Cached - SReclaimable
+        # Source: https://github.com/KittyKatt/screenFetch/issues/386
+        (Linux*)
+            # Parse the '/proc/meminfo' file splitting on ':' and 'k'.
+            # The format of the file is 'key:   000kB' and an additional
+            # split is used on 'k' to filter out 'kB'.
+            while IFS=':k '  read -r key val _; do
+                case $key in
+                    (MemTotal)
+                        mem_used=$((mem_used + val))
+                        mem_full=$val
+                    ;;
+
+                    (Shmem)
+                        mem_used=$((mem_used + val))
+                    ;;
+
+                    (MemFree | Buffers | Cached | SReclaimable)
+                        mem_used=$((mem_used - val))
+                    ;;
+
+                    # If detected this will be used over the above calculation
+                    # for mem_used. Available since Linux 3.14rc.
+                    # See kernel commit 34e431b0ae398fc54ea69ff85ec700722c9da773
+                    (MemAvailable)
+                        mem_avail=$val
+                    ;;
+                esac
+            done < /proc/meminfo
+
+            case $mem_avail in
+                (*[0-9]*)
+                    mem_used=$(((mem_full - mem_avail) / 1024))
+                ;;
+
+                *)
+                    mem_used=$((mem_used / 1024))
+                ;;
+            esac
+
+            mem_full=$((mem_full / 1024))
+        ;;
+
+        # Used memory is calculated using the following "formula":
+        # (wired + active + occupied) * 4 / 1024
+        (Darwin*)
+            mem_full=$(($(sysctl -n hw.memsize) / 1024 / 1024))
+
+            # Parse the 'vmstat' file splitting on ':' and '.'.
+            # The format of the file is 'key:   000.' and an additional
+            # split is used on '.' to filter it out.
+            while IFS=:. read -r key val; do
+                case $key in
+                    (*' wired'*|*' active'*|*' occupied'*)
+                        mem_used=$((mem_used + ${val:-0}))
+                    ;;
+                esac
+
+            # Using '<<-EOF' is the only way to loop over a command's
+            # output without the use of a pipe ('|').
+            # This ensures that any variables defined in the while loop
+            # are still accessible in the script.
+            done <<-EOF
+                $(vm_stat)
+			EOF
+
+            mem_used=$((mem_used * 4 / 1024))
+        ;;
+
+        (OpenBSD*)
+            mem_full=$(($(sysctl -n hw.physmem) / 1024 / 1024))
+
+            # This is a really simpler parser for 'vmstat' which grabs
+            # the used memory amount in a lazy way. 'vmstat' prints 3
+            # lines of output with the needed value being stored in the
+            # final line.
+            #
+            # This loop simply grabs the 3rd element of each line until
+            # the EOF is reached. Each line overwrites the value of the
+            # previous one so we're left with what we wanted. This isn't
+            # slow as only 3 lines are parsed.
+            while read -r _ _ line _; do
+                mem_used=${line%%M}
+
+            # Using '<<-EOF' is the only way to loop over a command's
+            # output without the use of a pipe ('|').
+            # This ensures that any variables defined in the while loop
+            # are still accessible in the script.
+            done <<-EOF
+                $(vmstat)
+			EOF
+        ;;
+
+        # Used memory is calculated using the following "formula":
+        # mem_full - ((inactive + free + cache) * page_size / 1024)
+        (FreeBSD*|DragonFly*)
+            mem_full=$(($(sysctl -n hw.physmem) / 1024 / 1024))
+
+            # Use 'set --' to store the output of the command in the
+            # argument list. POSIX sh has no arrays but this is close enough.
+            #
+            # Disable the shellcheck warning for word-splitting
+            # as it's safe and intended ('set -f' disables globbing).
+            # shellcheck disable=2046
+            {
+                set -f
+                set +f -- $(sysctl -n hw.pagesize \
+                                      vm.stats.vm.v_inactive_count \
+                                      vm.stats.vm.v_free_count \
+                                      vm.stats.vm.v_cache_count)
+            }
+
+            # Calculate the amount of used memory.
+            # $1: hw.pagesize
+            # $2: vm.stats.vm.v_inactive_count
+            # $3: vm.stats.vm.v_free_count
+            # $4: vm.stats.vm.v_cache_count
+            mem_used=$((mem_full - (($2 + $3 + $4) * $1 / 1024 / 1024)))
+        ;;
+
+        (NetBSD*)
+            mem_full=$(($(sysctl -n hw.physmem64) / 1024 / 1024))
+
+            # NetBSD implements a lot of the Linux '/proc' filesystem,
+            # this uses the same parser as the Linux memory detection.
+            while IFS=':k ' read -r key val _; do
+                case $key in
+                    (MemFree)
+                        mem_free=$((val / 1024))
+                        break
+                    ;;
+                esac
+            done < /proc/meminfo
+
+            mem_used=$((mem_full - mem_free))
+        ;;
+
+        (Haiku)
+            # Read the first line of 'sysinfo -mem' splitting on
+            # '(', ' ', and ')'. The needed information is then
+            # stored in the 5th and 7th elements. Using '_' "consumes"
+            # an element allowing us to proceed to the next one.
+            #
+            # The parsed format is as follows:
+            # 3501142016 bytes free      (used/max  792645632 / 4293787648)
+            IFS='( )' read -r _ _ _ _ mem_used _ mem_full <<-EOF
+                $(sysinfo -mem)
+			EOF
+
+            mem_used=$((mem_used / 1024 / 1024))
+            mem_full=$((mem_full / 1024 / 1024))
+        ;;
+
+        (Minix)
+            # Minix includes the '/proc' filesystem though the format
+            # differs from Linux. The '/proc/meminfo' file is only a
+            # single line with space separated elements and elements
+            # 2 and 3 contain the total and free memory numbers.
+            read -r _ mem_full mem_free _ < /proc/meminfo
+
+            mem_used=$(((mem_full - mem_free) / 1024))
+            mem_full=$(( mem_full / 1024))
+        ;;
+
+        (SunOS)
+            hw_pagesize=$(pagesize)
+
+            # 'kstat' outputs memory in the following format:
+            # unix:0:system_pages:pagestotal	1046397
+            # unix:0:system_pages:pagesfree		885018
+            #
+            # This simply uses the first "element" (white-space
+            # separated) as the key and the second element as the
+            # value.
+            #
+            # A variable is then assigned based on the key.
+            while read -r key val; do
+                case $key in
+                    (*total)
+                        pages_full=$val
+                    ;;
+
+                    (*free)
+                        pages_free=$val
+                    ;;
+                esac
+            done <<-EOF
+				$(kstat -p unix:0:system_pages:pagestotal \
+                           unix:0:system_pages:pagesfree)
+			EOF
+
+            mem_full=$((pages_full * hw_pagesize / 1024 / 1024))
+            mem_free=$((pages_free * hw_pagesize / 1024 / 1024))
+            mem_used=$((mem_full - mem_free))
+        ;;
+
+        (IRIX)
+            # Read the memory information from the 'top' command. Parse
+            # and split each line until we reach the line starting with
+            # "Memory".
+            #
+            # Example output: Memory: 160M max, 147M avail, .....
+            while IFS=' :' read -r label mem_full _ mem_free _; do
+                case $label in
+                    (Memory)
+                        mem_full=${mem_full%M}
+                        mem_free=${mem_free%M}
+                        break
+                    ;;
+                esac
+            done <<-EOF
+                $(top -n)
+			EOF
+
+            mem_used=$((mem_full - mem_free))
+        ;;
+    esac
+
+    log memory "${mem_used:-?}M / ${mem_full:-?}M" >&6
+}
+
+get_wm() {
+    case $os in
+        (Darwin*)
+            # Don't display window manager on macOS.
+        ;;
+
+        (*)
+            # xprop can be used to grab the window manager's properties
+            # which contains the window manager's name under '_NET_WM_NAME'.
+            #
+            # The upside to using 'xprop' is that you don't need to hardcode
+            # a list of known window manager names. The downside is that
+            # not all window managers conform to setting the '_NET_WM_NAME'
+            # atom..
+            #
+            # List of window managers which fail to set the name atom:
+            # catwm, fvwm, dwm, 2bwm, monster, wmaker and sowm [mine! ;)].
+            #
+            # The final downside to this approach is that it does _not_
+            # support Wayland environments. The only solution which supports
+            # Wayland is the 'ps' parsing mentioned below.
+            #
+            # A more naive implementation is to parse the last line of
+            # '~/.xinitrc' to extract the second white-space separated
+            # element.
+            #
+            # The issue with an approach like this is that this line data
+            # does not always equate to the name of the window manager and
+            # could in theory be _anything_.
+            #
+            # This also fails when the user launches xorg through a display
+            # manager or other means.
+            #
+            #
+            # Another naive solution is to parse 'ps' with a hardcoded list
+            # of window managers to detect the current window manager (based
+            # on what is running).
+            #
+            # The issue with this approach is the need to hardcode and
+            # maintain a list of known window managers.
+            #
+            # Another issue is that process names do not always equate to
+            # the name of the window manager. False-positives can happen too.
+            #
+            # This is the only solution which supports Wayland based
+            # environments sadly. It'd be nice if some kind of standard were
+            # established to identify Wayland environments.
+            #
+            # pfetch's goal is to remain _simple_, if you'd like a "full"
+            # implementation of window manager detection use 'neofetch'.
+            #
+            # Neofetch use a combination of 'xprop' and 'ps' parsing to
+            # support all window managers (including non-conforming and
+            # Wayland) though it's a lot more complicated!
+
+            # Don't display window manager if X isn't running.
+            [ "$DISPLAY" ] || return
+
+            # This is a two pass call to xprop. One call to get the window
+            # manager's ID and another to print its properties.
+            has xprop && {
+                # The output of the ID command is as follows:
+                # _NET_SUPPORTING_WM_CHECK: window id # 0x400000
+                #
+                # To extract the ID, everything before the last space
+                # is removed.
+                id=$(xprop -root -notype _NET_SUPPORTING_WM_CHECK)
+                id=${id##* }
+
+                # The output of the property command is as follows:
+                # _NAME 8t
+                # _NET_WM_PID = 252
+                # _NET_WM_NAME = "bspwm"
+                # _NET_SUPPORTING_WM_CHECK: window id # 0x400000
+                # WM_CLASS = "wm", "Bspwm"
+                #
+                # To extract the name, everything before '_NET_WM_NAME = \"'
+                # is removed and everything after the next '"' is removed.
+                wm=$(xprop -id "$id" -notype -len 25 -f _NET_WM_NAME 8t)
+            }
+
+            # Handle cases of a window manager _not_ populating the
+            # '_NET_WM_NAME' atom. Display nothing in this case.
+            case $wm in
+                (*'_NET_WM_NAME = '*)
+                    wm=${wm##*_NET_WM_NAME = \"}
+                    wm=${wm%%\"*}
+                ;;
+
+                (*)
+                    # Fallback to checking the process list
+                    # for the select few window managers which
+                    # don't set '_NET_WM_NAME'.
+                    while read -r ps_line; do
+                        case $ps_line in
+                            (*catwm*)     wm=catwm ;;
+                            (*fvwm*)      wm=fvwm ;;
+                            (*dwm*)       wm=dwm ;;
+                            (*2bwm*)      wm=2bwm ;;
+                            (*monsterwm*) wm=monsterwm ;;
+                            (*wmaker*)    wm='Window Maker' ;;
+                            (*sowm*)      wm=sowm ;;
+                        esac
+                    done <<-EOF
+                        $(ps x)
+					EOF
+                ;;
+            esac
+        ;;
+    esac
+
+    log wm "$wm" >&6
+}
+
+
+get_de() {
+    # This only supports Xorg related desktop environments though
+    # this is fine as knowing the desktop environment on Windows,
+    # macOS etc is useless (they'll always report the same value).
+    #
+    # Display the value of '$XDG_CURRENT_DESKTOP', if it's empty,
+    # display the value of '$DESKTOP_SESSION'.
+    log de "${XDG_CURRENT_DESKTOP:-$DESKTOP_SESSION}" >&6
+}
+
+get_shell() {
+    # Display the basename of the '$SHELL' environment variable.
+    log shell "${SHELL##*/}" >&6
+}
+
+get_editor() {
+    # Display the value of '$VISUAL', if it's empty, display the
+    # value of '$EDITOR'.
+    log editor "${VISUAL:-$EDITOR}" >&6
+}
+
+get_palette() {
+    # Print the first 8 terminal colors. This uses the existing
+    # sequences to change text color with a sequence prepended
+    # to reverse the foreground and background colors.
+    #
+    # This allows us to save hardcoding a second set of sequences
+    # for background colors.
+    #
+    # False positive.
+    # shellcheck disable=2154
+    {
+        esc SGR 7
+        palette="$e$c1 $c1 $c2 $c2 $c3 $c3 $c4 $c4 $c5 $c5 $c6 $c6 "
+        esc SGR 0
+        palette="$palette$e"
+    }
+
+    # Print the palette with a new-line before and afterwards.
+    printf '\n' >&6
+    log "$palette
+        " " " >&6
+}
+
+get_ascii() {
+    # This is a simple function to read the contents of
+    # an ascii file from 'stdin'. It allows for the use
+    # of '<<-EOF' to prevent the break in indentation in
+    # this source code.
+    #
+    # This function also sets the text colors according
+    # to the ascii color.
+    read_ascii() {
+        # 'PF_COL1': Set the info name color according to ascii color.
+        # 'PF_COL3': Set the title color to some other color. ¯\_(ツ)_/¯
+        PF_COL1=${PF_COL1:-${1:-7}}
+        PF_COL3=${PF_COL3:-$((${1:-7}%8+1))}
+
+        # POSIX sh has no 'var+=' so 'var=${var}append' is used. What's
+        # interesting is that 'var+=' _is_ supported inside '$(())'
+        # (arithmetic) though there's no support for 'var++/var--'.
+        #
+        # There is also no $'\n' to add a "literal"(?) newline to the
+        # string. The simplest workaround being to break the line inside
+        # the string (though this has the caveat of breaking indentation).
+        while IFS= read -r line; do
+            ascii="$ascii$line
+"
+        done
+    }
+
+    # This checks for ascii art in the following order:
+    # '$1':        Argument given to 'get_ascii()' directly.
+    # '$PF_ASCII': Environment variable set by user.
+    # '$distro':   The detected distribution name.
+    # '$os':       The name of the operating system/kernel.
+    #
+    # NOTE: Each ascii art below is indented using tabs, this
+    #       allows indentation to continue naturally despite
+    #       the use of '<<-EOF'.
+    #
+    # False positive.
+    # shellcheck disable=2154
+    case ${1:-${PF_ASCII:-${distro:-$os}}} in
+        ([Aa]lpine*)
+            read_ascii 4 <<-EOF
+				${c4}   /\\ /\\
+				  /${c7}/ ${c4}\\  \\
+				 /${c7}/   ${c4}\\  \\
+				/${c7}//    ${c4}\\  \\
+				${c7}//      ${c4}\\  \\
+				         ${c4}\\
+			EOF
+        ;;
+
+        ([Aa]ndroid*)
+            read_ascii 2 <<-EOF
+				${c2}  ;,           ,;
+				${c2}   ';,.-----.,;'
+				${c2}  ,'           ',
+				${c2} /    O     O    \\
+				${c2}|                 |
+				${c2}'-----------------'
+			EOF
+        ;;
+
+        ([Aa]rch*)
+            read_ascii 4 <<-EOF
+				${c6}       /\\
+				${c6}      /  \\
+				${c6}     /\\   \\
+				${c4}    /      \\
+				${c4}   /   ,,   \\
+				${c4}  /   |  |  -\\
+				${c4} /_-''    ''-_\\
+			EOF
+        ;;
+
+        ([Aa]rco*)
+            read_ascii 4 <<-EOF
+				${c4}      /\\
+				${c4}     /  \\
+				${c4}    / /\\ \\
+				${c4}   / /  \\ \\
+				${c4}  / /    \\ \\
+				${c4} / / _____\\ \\
+				${c4}/_/  \`----.\\_\\
+			EOF
+        ;;
+
+        ([Aa]rtix*)
+            read_ascii 6 <<-EOF
+				${c4}      /\\
+				${c4}     /  \\
+				${c4}    /\`'.,\\
+				${c4}   /     ',
+				${c4}  /      ,\`\\
+				${c4} /   ,.'\`.  \\
+				${c4}/.,'\`     \`'.\\
+			EOF
+        ;;
+
+        ([Bb]edrock*)
+            read_ascii 4 <<-EOF
+				${c7}__
+				${c7}\\ \\___
+				${c7} \\  _ \\
+				${c7}  \\___/
+			EOF
+        ;;
+
+        ([Bb]uildroot*)
+            read_ascii 3 <<-EOF
+				${c3}   ___
+				${c3} / \`   \\
+				${c3}|   :  :|
+				${c3}-. _:__.-
+				${c3}  \` ---- \`
+			EOF
+        ;;
+
+        ([Cc]ent[Oo][Ss]*)
+            read_ascii 5 <<-EOF
+				${c2} ____${c3}^${c5}____
+				${c2} |\\  ${c3}|${c5}  /|
+				${c2} | \\ ${c3}|${c5} / |
+				${c5}<---- ${c4}---->
+				${c4} | / ${c2}|${c3} \\ |
+				${c4} |/__${c2}|${c3}__\\|
+				${c2}     v
+			EOF
+        ;;
+
+        ([Dd]ahlia*)
+            read_ascii 1 <<-EOF
+				${c1}      _
+				${c1}  ___/ \\___
+				${c1} |   _-_   |
+				${c1} | /     \ |
+				${c1}/ |       | \\
+				${c1}\\ |       | /
+				${c1} | \ _ _ / |
+				${c1} |___ - ___|
+				${c1}     \\_/
+			EOF
+        ;;
+
+        ([Dd]ebian*)
+            read_ascii 1 <<-EOF
+				${c1}  _____
+				${c1} /  __ \\
+				${c1}|  /    |
+				${c1}|  \\___-
+				${c1}-_
+				${c1}  --_
+			EOF
+        ;;
+
+        ([Dd]ragon[Ff]ly*)
+            read_ascii 1 <<-EOF
+				    ,${c1}_${c7},
+				 ('-_${c1}|${c7}_-')
+				  >--${c1}|${c7}--<
+				 (_-'${c1}|${c7}'-_)
+				     ${c1}|
+				     ${c1}|
+				     ${c1}|
+			EOF
+        ;;
+
+        ([Ee]lementary*)
+            read_ascii <<-EOF
+				${c7}  _______
+				${c7} / ____  \\
+				${c7}/  |  /  /\\
+				${c7}|__\\ /  / |
+				${c7}\\   /__/  /
+				 ${c7}\\_______/
+			EOF
+        ;;
+
+        ([Ee]ndeavour*)
+            read_ascii 4 <<-EOF
+						      ${c1}/${c4}\\
+				    ${c1}/${c4}/  \\${c6}\\
+				   ${c1}/${c4}/    \\ ${c6}\\
+				 ${c1}/ ${c4}/     _) ${c6})
+				${c1}/_${c4}/___-- ${c6}__-
+				 ${c6}/____--
+			EOF
+        ;;
+
+        ([Ff]edora*)
+            read_ascii 4 <<-EOF
+				${c7}      _____
+				     /   __)${c4}\\${c7}
+				     |  /  ${c4}\\ \\${c7}
+				  ${c4}__${c7}_|  |_${c4}_/ /${c7}
+				 ${c4}/ ${c7}(_    _)${c4}_/${c7}
+				${c4}/ /${c7}  |  |
+				${c4}\\ \\${c7}__/  |
+				 ${c4}\\${c7}(_____/
+			EOF
+        ;;
+
+        ([Ff]ree[Bb][Ss][Dd]*)
+            read_ascii 1 <<-EOF
+				${c1}/\\,-'''''-,/\\
+				${c1}\\_)       (_/
+				${c1}|           |
+				${c1}|           |
+				 ${c1};         ;
+				  ${c1}'-_____-'
+			EOF
+        ;;
+
+        ([Gg]entoo*)
+            read_ascii 5 <<-EOF
+				${c5} _-----_
+				${c5}(       \\
+				${c5}\\    0   \\
+				${c7} \\        )
+				${c7} /      _/
+				${c7}(     _-
+				${c7}\\____-
+			EOF
+        ;;
+
+        ([Gg][Nn][Uu]*)
+            read_ascii 3 <<-EOF
+				${c2}    _-\`\`-,   ,-\`\`-_
+				${c2}  .'  _-_|   |_-_  '.
+				${c2}./    /_._   _._\\    \\.
+				${c2}:    _/_._\`:'_._\\_    :
+				${c2}\\:._/  ,\`   \\   \\ \\_.:/
+				${c2}   ,-';'.@)  \\ @) \\
+				${c2}   ,'/'  ..- .\\,-.|
+				${c2}   /'/' \\(( \\\` ./ )
+				${c2}    '/''  \\_,----'
+				${c2}      '/''   ,;/''
+				${c2}         \`\`;'
+			EOF
+        ;;
+
+        ([Gg]uix[Ss][Dd]*|[Gg]uix*)
+            read_ascii 3 <<-EOF
+				${c3}|.__          __.|
+				${c3}|__ \\        / __|
+				   ${c3}\\ \\      / /
+				    ${c3}\\ \\    / /
+				     ${c3}\\ \\  / /
+				      ${c3}\\ \\/ /
+				       ${c3}\\__/
+			EOF
+        ;;
+
+        ([Hh]aiku*)
+            read_ascii 3 <<-EOF
+				${c3}       ,^,
+				 ${c3}     /   \\
+				${c3}*--_ ;     ; _--*
+				${c3}\\   '"     "'   /
+				 ${c3}'.           .'
+				${c3}.-'"         "'-.
+				 ${c3}'-.__.   .__.-'
+				       ${c3}|_|
+			EOF
+        ;;
+
+        ([Hh]yperbola*)
+            read_ascii <<-EOF
+				${c7}    |\`__.\`/
+				   ${c7} \____/
+				   ${c7} .--.
+				  ${c7} /    \\
+				 ${c7} /  ___ \\
+				 ${c7}/ .\`   \`.\\
+				${c7}/.\`      \`.\\
+			EOF
+        ;;
+
+        ([Ii]nstant[Oo][Ss]*)
+            read_ascii <<-EOF
+				${c0} ,-''-,
+				${c0}: .''. :
+				${c0}: ',,' :
+				${c0} '-____:__
+				${c0}       :  \`.
+				${c0}       \`._.'
+			EOF
+        ;;
+
+        ([Ii][Rr][Ii][Xx]*)
+            read_ascii 1 <<-EOF
+				${c1} __
+				${c1} \\ \\   __
+				${c1}  \\ \\ / /
+				${c1}   \\ v /
+				${c1}   / . \\
+				${c1}  /_/ \\ \\
+				${c1}       \\_\\
+			EOF
+        ;;
+
+        ([Kk][Dd][Ee]*[Nn]eon*)
+            read_ascii 6 <<-EOF
+				${c7}   .${c6}__${c7}.${c6}__${c7}.
+				${c6}  /  _${c7}.${c6}_  \\
+				${c6} /  /   \\  \\
+				${c7} . ${c6}|  ${c7}O${c6}  | ${c7}.
+				${c6} \\  \\_${c7}.${c6}_/  /
+				${c6}  \\${c7}.${c6}__${c7}.${c6}__${c7}.${c6}/
+			EOF
+        ;;
+
+        ([Ll]inux*[Ll]ite*|[Ll]ite*)
+            read_ascii 3 <<-EOF
+				${c3}   /\\
+				${c3}  /  \\
+				${c3} / ${c7}/ ${c3}/
+			${c3}> ${c7}/ ${c3}/
+				${c3}\\ ${c7}\\ ${c3}\\
+				 ${c3}\\_${c7}\\${c3}_\\
+				${c7}    \\
+			EOF
+        ;;
+
+        ([Ll]inux*[Mm]int*|[Mm]int)
+            read_ascii 2 <<-EOF
+				${c2} ___________
+				${c2}|_          \\
+				  ${c2}| ${c7}| _____ ${c2}|
+				  ${c2}| ${c7}| | | | ${c2}|
+				  ${c2}| ${c7}| | | | ${c2}|
+				  ${c2}| ${c7}\\__${c7}___/ ${c2}|
+				  ${c2}\\_________/
+			EOF
+        ;;
+
+
+        ([Ll]inux*)
+            read_ascii 4 <<-EOF
+				${c4}    ___
+				   ${c4}(${c7}.. ${c4}|
+				   ${c4}(${c5}<> ${c4}|
+				  ${c4}/ ${c7}__  ${c4}\\
+				 ${c4}( ${c7}/  \\ ${c4}/|
+				${c5}_${c4}/\\ ${c7}__)${c4}/${c5}_${c4})
+				${c5}\/${c4}-____${c5}\/
+			EOF
+        ;;
+
+        ([Mm]ac[Oo][Ss]*|[Dd]arwin*)
+            read_ascii 1 <<-EOF
+				${c1}       .:'
+				${c1}    _ :'_
+				${c2} .'\`_\`-'_\`\`.
+				${c2}:________.-'
+				${c3}:_______:
+				${c4} :_______\`-;
+				${c5}  \`._.-._.'
+			EOF
+        ;;
+
+        ([Mm]ageia*)
+            read_ascii 2 <<-EOF
+				${c6}   *
+				${c6}    *
+				${c6}   **
+				${c7} /\\__/\\
+				${c7}/      \\
+				${c7}\\      /
+				${c7} \\____/
+			EOF
+        ;;
+
+        ([Mm]anjaro*)
+            read_ascii 2 <<-EOF
+				${c2}||||||||| ||||
+				${c2}||||||||| ||||
+				${c2}||||      ||||
+				${c2}|||| |||| ||||
+				${c2}|||| |||| ||||
+				${c2}|||| |||| ||||
+				${c2}|||| |||| ||||
+			EOF
+        ;;
+
+        ([Mm]inix*)
+            read_ascii 4 <<-EOF
+				${c4} ,,        ,,
+				${c4};${c7},${c4} ',    ,' ${c7},${c4};
+				${c4}; ${c7}',${c4} ',,' ${c7},'${c4} ;
+				${c4};   ${c7}',${c4}  ${c7},'${c4}   ;
+				${c4};  ${c7};, '' ,;${c4}  ;
+				${c4};  ${c7};${c4};${c7}',,'${c4};${c7};${c4}  ;
+				${c4}', ${c7};${c4};;  ;;${c7};${c4} ,'
+				 ${c4} '${c7};${c4}'    '${c7};${c4}'
+			EOF
+        ;;
+
+        ([Mm][Xx]*)
+            read_ascii <<-EOF
+				${c7}    \\\\  /
+				 ${c7}    \\\\/
+				 ${c7}     \\\\
+				 ${c7}  /\\/ \\\\
+				${c7}  /  \\  /\\
+				${c7} /    \\/  \\
+			${c7}/__________\\
+			EOF
+        ;;
+
+        ([Nn]et[Bb][Ss][Dd]*)
+            read_ascii 3 <<-EOF
+				${c7}\\\\${c3}\`-______,----__
+				${c7} \\\\        ${c3}__,---\`_
+				${c7}  \\\\       ${c3}\`.____
+				${c7}   \\\\${c3}-______,----\`-
+				${c7}    \\\\
+				${c7}     \\\\
+				${c7}      \\\\
+			EOF
+        ;;
+
+        ([Nn]ix[Oo][Ss]*)
+            read_ascii 4 <<-EOF
+				${c4}  \\\\  \\\\ //
+				${c4} ==\\\\__\\\\/ //
+				${c4}   //   \\\\//
+				${c4}==//     //==
+				${c4} //\\\\___//
+				${c4}// /\\\\  \\\\==
+				${c4}  // \\\\  \\\\
+			EOF
+        ;;
+
+        ([Oo]pen[Bb][Ss][Dd]*)
+            read_ascii 3 <<-EOF
+				${c3}      _____
+				${c3}    \\-     -/
+				${c3} \\_/         \\
+				${c3} |        ${c7}O O${c3} |
+				${c3} |_  <   )  3 )
+				${c3} / \\         /
+				 ${c3}   /-_____-\\
+			EOF
+        ;;
+
+        ([Oo]pen[Ss][Uu][Ss][Ee]*[Tt]umbleweed*)
+            read_ascii 2 <<-EOF
+				${c2}  _____   ______
+				${c2} / ____\\ / ____ \\
+				${c2}/ /    \`/ /    \\ \\
+				${c2}\\ \\____/ /,____/ /
+				${c2} \\______/ \\_____/
+			EOF
+        ;;
+
+        ([Oo]pen[Ss][Uu][Ss][Ee]*|[Oo]pen*SUSE*|SUSE*|suse*)
+            read_ascii 2 <<-EOF
+				${c2}  _______
+				${c2}__|   __ \\
+				${c2}     / .\\ \\
+				${c2}     \\__/ |
+				${c2}   _______|
+				${c2}   \\_______
+				${c2}__________/
+			EOF
+        ;;
+
+        ([Oo]pen[Ww]rt*)
+            read_ascii 1 <<-EOF
+				${c1} _______
+				${c1}|       |.-----.-----.-----.
+				${c1}|   -   ||  _  |  -__|     |
+				${c1}|_______||   __|_____|__|__|
+				${c1} ________|__|    __
+				${c1}|  |  |  |.----.|  |_
+				${c1}|  |  |  ||   _||   _|
+				${c1}|________||__|  |____|
+			EOF
+        ;;
+
+        ([Pp]arabola*)
+            read_ascii 5 <<-EOF
+				${c5}  __ __ __  _
+				${c5}.\`_//_//_/ / \`.
+				${c5}          /  .\`
+				${c5}         / .\`
+				${c5}        /.\`
+				${c5}       /\`
+			EOF
+        ;;
+
+        ([Pp]op!_[Oo][Ss]*)
+            read_ascii 6 <<-EOF
+				${c6}______
+				${c6}\\   _ \\        __
+				 ${c6}\\ \\ \\ \\      / /
+				  ${c6}\\ \\_\\ \\    / /
+				   ${c6}\\  ___\\  /_/
+				   ${c6} \\ \\    _
+				  ${c6} __\\_\\__(_)_
+				  ${c6}(___________)
+			EOF
+        ;;
+
+        ([Pp]ure[Oo][Ss]*)
+            read_ascii <<-EOF
+				${c7} _____________
+				${c7}|  _________  |
+				${c7}| |         | |
+				${c7}| |         | |
+				${c7}| |_________| |
+				${c7}|_____________|
+			EOF
+        ;;
+
+        ([Rr]aspbian*)
+            read_ascii 1 <<-EOF
+				${c2}  __  __
+				${c2} (_\\)(/_)
+				${c1} (_(__)_)
+				${c1}(_(_)(_)_)
+				${c1} (_(__)_)
+				${c1}   (__)
+			EOF
+        ;;
+
+        ([Ss]lackware*)
+            read_ascii 4 <<-EOF
+				${c4}   ________
+				${c4}  /  ______|
+				${c4}  | |______
+				${c4}  \\______  \\
+				${c4}   ______| |
+				${c4}| |________/
+				${c4}|____________
+			EOF
+        ;;
+
+        ([Ss]un[Oo][Ss]|[Ss]olaris*)
+            read_ascii 3 <<-EOF
+				${c3}       .   .;   .
+				${c3}   .   :;  ::  ;:   .
+				${c3}   .;. ..      .. .;.
+				${c3}..  ..             ..  ..
+				${c3} .;,                 ,;.
+			EOF
+        ;;
+
+        ([Uu]buntu*)
+            read_ascii 3 <<-EOF
+				${c3}         _
+				${c3}     ---(_)
+				${c3} _/  ---  \\
+				${c3}(_) |   |
+				 ${c3} \\  --- _/
+				    ${c3} ---(_)
+			EOF
+        ;;
+
+        ([Vv]oid*)
+            read_ascii 2 <<-EOF
+				${c2}    _______
+				${c2} _ \\______ -
+				${c2}| \\  ___  \\ |
+				${c2}| | /   \ | |
+				${c2}| | \___/ | |
+				${c2}| \\______ \\_|
+				${c2} -_______\\
+			EOF
+        ;;
+
+        (*)
+            # On no match of a distribution ascii art, this function calls
+            # itself again, this time to look for a more generic OS related
+            # ascii art (KISS Linux -> Linux).
+            [ "$1" ] || {
+                get_ascii "$os"
+                return
+            }
+
+            printf 'error: %s is not currently supported.\n' "$os" >&6
+            printf 'error: Open an issue for support to be added.\n' >&6
+            exit 1
+        ;;
+    esac
+
+    # Store the "width" (longest line) and "height" (number of lines)
+    # of the ascii art for positioning. This script prints to the screen
+    # *almost* like a TUI does. It uses escape sequences to allow dynamic
+    # printing of the information through user configuration.
+    #
+    # Iterate over each line of the ascii art to retrieve the above
+    # information. The 'sed' is used to strip '\033[3Xm' color codes from
+    # the ascii art so they don't affect the width variable.
+    while read -r line; do
+        ascii_height=$((${ascii_height:-0} + 1))
+
+        # This was a ternary operation but they aren't supported in
+        # Minix's shell.
+        [ "${#line}" -gt "${ascii_width:-0}" ] &&
+            ascii_width=${#line}
+
+    # Using '<<-EOF' is the only way to loop over a command's
+    # output without the use of a pipe ('|').
+    # This ensures that any variables defined in the while loop
+    # are still accessible in the script.
+    done <<-EOF
+ 		$(printf %s "$ascii" | sed 's/\[3.m//g')
+	EOF
+
+    # Add a gap between the ascii art and the information.
+    ascii_width=$((ascii_width + 4))
+
+    # Print the ascii art and position the cursor back where we
+    # started prior to printing it.
+    {
+        esc_p SGR 1
+        printf '%s' "$ascii"
+        esc_p SGR 0
+        esc_p CUU "$ascii_height"
+    } >&6
+}
+
+main() {
+    [ "$1" = --version ] && {
+        printf 'pfetch 0.7.0\n'
+        exit 0
+    }
+
+    # Hide 'stderr' unless the first argument is '-v'. This saves
+    # polluting the script with '2>/dev/null'.
+    [ "$1" = -v ] || {
+        exec 2>/dev/null
+    }
+
+    # Hide 'stdout' and selectively print to it using '>&6'.
+    # This gives full control over what it displayed on the screen.
+    exec 6>&1 >/dev/null
+
+    # Store raw escape sequence character for later reuse.
+    esc_c=$(printf '\033')
+
+    # Allow the user to execute their own script and modify or
+    # extend pfetch's behavior.
+    # shellcheck source=/dev/null
+    . "${PF_SOURCE:-/dev/null}" ||:
+
+    # Ensure that the 'TMPDIR' is writable as heredocs use it and
+    # fail without the write permission. This was found to be the
+    # case on Android where the temporary directory requires root.
+    [ -w "${TMPDIR:-/tmp}" ] || export TMPDIR=~
+
+    # Generic color list.
+    # Disable warning about unused variables.
+    # shellcheck disable=2034
+    for _c in c1 c2 c3 c4 c5 c6 c7 c8; do
+        esc SGR "3${_c#?}" 0
+        export "$_c=$e"
+    done
+
+    # Disable line wrapping and catch the EXIT signal to enable it again
+    # on exit. Ideally you'd somehow query the current value and retain
+    # it but I'm yet to see this irk anyone.
+    esc_p DECAWM l >&6
+    trap 'esc_p DECAWM h >&6' EXIT
+
+    # Store the output of 'uname' to avoid calling it multiple times
+    # throughout the script. 'read <<EOF' is the simplest way of reading
+    # a command into a list of variables.
+    read -r os kernel arch <<-EOF
+		$(uname -srm)
+	EOF
+
+    # Always run 'get_os' for the purposes of detecting which ascii
+    # art to display.
+    get_os
+
+    # Allow the user to specify the order and inclusion of information
+    # functions through the 'PF_INFO' environment variable.
+    # shellcheck disable=2086
+    {
+        # Disable globbing and set the positional parameters to the
+        # contents of 'PF_INFO'.
+        set -f
+        set +f -- ${PF_INFO-ascii title os host kernel uptime pkgs memory}
+
+        # Iterate over the info functions to determine the lengths of the
+        # "info names" for output alignment. The option names and subtitles
+        # match 1:1 so this is thankfully simple.
+        for info do
+            command -v "get_$info" >/dev/null || continue
+
+            # This was a ternary operation but they aren't supported in
+            # Minix's shell.
+            [ "${#info}" -gt "${info_length:-0}" ] &&
+                info_length=${#info}
+        done
+
+        # Add an additional space of length to act as a gap.
+        info_length=$((info_length + 1))
+
+        # Iterate over the above list and run any existing "get_" functions.
+        for info do
+            "get_$info"
+        done
+    }
+
+    # Position the cursor below both the ascii art and information lines
+    # according to the height of both. If the information exceeds the ascii
+    # art in height, don't touch the cursor (0/unset), else move it down
+    # N lines.
+    #
+    # This was a ternary operation but they aren't supported in Minix's shell.
+    [ "${info_height:-0}" -lt "${ascii_height:-0}" ] &&
+        cursor_pos=$((ascii_height - info_height))
+
+    # Print '$cursor_pos' amount of newlines to correctly position the
+    # cursor. This used to be a 'printf $(seq X X)' however 'seq' is only
+    # typically available (by default) on GNU based systems!
+    while [ "${i:=0}" -le "${cursor_pos:-0}" ]; do
+        printf '\n'
+        i=$((i + 1))
+    done >&6
+}
+
+main "$@"
+#+end_src
+
+* rd
+#+begin_src sh :tangle rd
+#!/bin/sh
+# RD: Read a character from the tty
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 9/12/2020
+# License: MIT License
+
+rd() {
+    IFS=
+    read -rsn1 mode # get 1 character
+    [[ $mode == $(printf "\u1b") ]] && read -rsn4 -t 0.001 mode2
+    char=$(echo -n "$mode$mode2" | sed 's/\[A//;s/\[B//;s/\[C//;s/\[D//;')
+    if [[ "$(echo -n $char | hexdump -c | tr -d '\n' | tr -d ' ')" == '00000000000001' ]]; then
+        str='space'
+    else
+        case "$char" in
+            [a-zA-Z0-9,._+:@%/-\#\$\^\&\*\(\)\=\{\}\|\\\;\'\"\<\>\~\`\[\]]) str=$char;;
+            '!') str='!';;
+            '?') str='?';;
+            *)
+                seq=$(echo -n "$mode$mode2" | hexdump -c | sed 's/^0+ \(.*\) \\n/\1/;s/ //g;s/^0*//;1q')
+                case $seq in
+                    '33') str='esc' ;;
+                    '33[A') str='up' ;;
+                    '33[B') str='down' ;;
+                    '33[C') str='right' ;;
+                    '33[D') str='left' ;;
+                    *)
+                        s=$(echo $seq | sed 's/\[A//;s/\[B//;s/\[C//;s/\[D//;')
+                        case $s in
+                            '') str='enter' ;;
+                            '1') str='^A' ;;
+                            '177') str='backspace' ;;
+                            *) str=$seq ;;
+                        esac
+                        ;;
+                esac
+                ;;
+        esac
+    fi
+    [[ -z $1 ]] && echo "$str" || eval "$1=\"$str\""
+}
+#+end_src
+
+* rdln
+#+begin_src sh :tangle rdln
+#!/bin/sh
+# RDLN: Read a line from the tty
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 9/12/2020
+# License: MIT License
+
+rdln() {
+    str="";
+    while true; do
+        echo -n "> $str"
+        char=`rd`
+        echo -en "$(tput el1)\r"
+        case $char in
+            "enter") [[ -z $1 ]] && echo "$str" || eval "$1=\"$str\""; return;;
+            "backspace") [[ $(echo $str | wc -m) -gt 1 ]] && str="${str::-1}";;
+            *) str+=$char;;
+        esac
+    done
+}
+#+end_src
+
+* README.md
+#+begin_src md :tangle README.md
+# n0s1.core
+
+### Several suckless shell scripts and other core features.
+
+## Shell
+
+### FZY: Command Line Fuzzy Finder 
+([link](fzy))
+
+I found myself using fzf a lot and building it into my scripts.
+But on a number of occasions I was working on machines which didn't have it installed.
+This covers many of my use cases (Like fuzzy menus) in < 20 lines of shell script.
+
+#### FZY_Lite: 10 SLOC Command Line Fuzzy Finder 
+([link](fzy_lite))
+I have also included FZY_Lite which is basically the same logic but squished into 10 SLOC
+(And smaller comment) for embedding inside scripts.
+
+### TOML: Simple get/set commands to read and write toml files 
+([link](toml))
+POSIX Compliant shell script for reading from + writing to TOML files.
+
+### BISH 
+([link](bish))
+Floating shell used for loading scripts and managing the system configuration.
+Built to allow easy customization supporting bioinformatics workloads,
+but generally just a good tool for extending your shell.
+
+### BM: Bookmarks 
+([link](bm))
+Bookmarks for everything.
+
+### CHECK_ROOT: Throws an error if the current user is not root 
+([link](check_root))
+Checks if the current user is root.
+
+### DISCORD_WEBHOOKS: Tool for managing and messaging using discord webhooks 
+([link](discordwebhooks))
+Manage webhooks to post as multiple users, for multiple channels in your servers.
+
+### HIST: Shell history made easy 
+([link](hist))
+Tool for working with shell history.
+
+### USELESS: less but less code. Seriously, just use less. 
+([link](useless))
+Less but written in 20 lines of shell script.
+Not designed to be used as is, more a foundation for other CLI tools
+
+### HACKLESS: The hackable less 
+([link](hackless))
+More extensible version of useless.
+
+### SETUP
+([link](setup))
+Script to set up parts of NanOS
+#+end_src
+
+* readtoml
+#+begin_src sh :tangle readtoml
+#!/bin/bash
+# READ_TOML: One line script to read from a toml file
+# Author: Nan0Scho1ar
+# Created: 11/1/2021
+# License: MIT License
+# TODO support multiline values
+# TODO support dotted notation (dotted headers/parent already work)
+# TODO apologize to my future self or anyone who has to maintin this
+
+sed -n "s/#.*//g;$([[ $1 =~ \. ]] && echo "/^\s*\[`sed 's/\..*//' <<< $1`\]/" || echo 0),/\^\s*[.*\]/!d;s/^\s*\"*`sed 's/.*\.//' <<< $1`\"*\s*=\s*//p" <<< $(cat $2 || cat /dev/stdin)
+
+#Super Minimal version which doesn't strip comments before processing and can't handle malformed whitespace
+#cat $2 | sed -n "$([[ $1 =~ \. ]] && echo "/^\[`sed 's/\..*//' <<< $1`\]/" || echo 0),/\^[.*\]/!d;s/^\s*\"*`sed 's/.*\.//' <<< $1`\"*\s=\s//p"
+
+#Explainer
+#parent="$(sed 's/\..*//' <<< "$1")"
+#key="$(sed 's/.*\.\//' <<< "$1")"
+#begin="$([[ $1 =~ \. ]] && echo "/^\s*\[$parent\]/" || echo 0)"
+##Remove comments from file; Filter to section; Return value
+#sed -n "s/#.*//g;$begin,/^\s*\[.*\]/!d;s/^\s*\"*$key\"*\s*=\s*//p" <<< $(cat $2 || cat /dev/stdin)
+#+end_src
+
+* setup
+#+begin_src sh :tangle setup
+#!/bin/bash
+# Script to init arch/ubuntu/windows_10 systems to nanOS
+#{{{ Colours
+# Add colour vars
+if [ -t 1 ] && command -v tput > /dev/null; then
+    # see if it supports colors
+    ncolors=$(tput colors)
+    if [ -n "$ncolors" ] && [ $ncolors -ge 8 ]; then
+        bold="$(tput bold       || echo)"
+        blink="$(tput blink     || echo)"
+        reset="$(tput sgr0      || echo)"
+        black="$(tput setaf 0   || echo)"
+        red="$(tput setaf 1     || echo)"
+        green="$(tput setaf 2   || echo)"
+        yellow="$(tput setaf 3  || echo)"
+        blue="$(tput setaf 4    || echo)"
+        magenta="$(tput setaf 5 || echo)"
+        cyan="$(tput setaf 6    || echo)"
+        white="$(tput setaf 7   || echo)"
+    fi
+fi
+#}}}
+#{{{ trypacmaninstall()
+#}}}
+#{{{ tryaurinstall()
+#}}}
+#{{{ tryaptinstall()
+#}}}
+#{{{ wait_any_key()
+#}}}
+#{{{ ask()
+#}}}
+#{{{ asklink()
+#}}}
+#{{{ askrecursivelinkdir()
+
+#}}}
+#{{{ asklinksudo()
+#}}}
+#{{{ askclone()
+#}}}
+#{{{ setup_ssh()
+#}}}
+#{{{ detect_os()
+#Detect OS
+#}}}
+#{{{ arch_pkg_setup()
+#}}}
+#{{{ ubuntu_pkg_setup()
+#}}}
+#{{{ vim_setup()
+#}}}
+#{{{ tmux_setup()
+#}}}
+#{{{ setup_symlinks()
+#}}}
+#{{{ setup_repos()
+#}}}
+#{{{ setup_git()
+#}}}
+# BEGIN
+detect_os
+cd $HOME
+if [ "$1" = "--configure" ]; then
+    setup_symlinks
+    exit
+elif [ "$1" = "--repos" ]; then
+    clone_repos
+    exit
+fi
+# Setup ssh
+echo ${blue}SSH Keys${reset}
+ask "Setup ssh" && setup_ssh
+echo ${blue}Git repos${reset}
+ask "Clone repos" && setup_repos
+echo ${blue}System Packages${reset}
+# Update system
+if ask "Upgrade packages"; then
+    case $NANOS_DISTRO in
+        Arch) sudo pacman -Syu && yay -Syu ;;
+        Ubuntu) sudo apt update && sudo apt upgrade ;;
+        Windows) echo "TODO Windows" ;;
+    esac
+fi
+# Install packages
+if ask "Install packages"; then
+    case $NANOS_DISTRO in
+        Arch) arch_pkg_setup ;;
+        Ubuntu) ubuntu_pkg_setup ;;
+        Windows) echo "TODO Windows" ;;
+    esac
+fi
+echo ${blue}Link files${reset}
+setup_symlinks
+echo ${blue}Vim plugins${reset}
+vim_setup
+echo ${blue}Tmux plugins${reset}
+tmux_setup
+#echo ${blue}Git settings${reset}
+#setup_git
+#doom emacs
+#+end_src
+
+* setup_git
+#+begin_src sh :tangle setup_git
+#!/bin/bash
+# setup_git: setup git settings
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 20:28:25 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+setup_git() {
+    ##Git settings
+    if [ "$(git config --get pull.rebase)" = false ] &&
+       [ "$(git config --get user.email)" = "scorch267@gmail.com" ] &&
+       [ "$(git config --get user.name)" = "nan0scho1ar" ] &&
+       [ "$(git config --get core.editor)" = "vim" ]; then
+        echo "${green}Git${reset} configured correctly"
+    elif ask "Update git settings"; then
+        git config --global pull.rebase false
+        git config --global user.email "scorch267@gmail.com"
+        git config --global user.name "nan0scho1ar"
+        git config --global core.editor "vim"
+    fi
+}
+#+end_src
+
+* setup_repos
+#+begin_src sh :tangle setup_repos
+#!/bin/bash
+# setup_repos: sets up repos for a system
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 20:23:47 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+setup_repos() {
+    mkdir -p "$NANOS_REPOS_DIR"
+    cd $NANOS_REPOS_DIR
+    askclone "dotfiles" "git@bitbucket.org:Nan0Scho1ar/dotfiles.git"
+    askclone "scripts" "git@bitbucket.org:Nan0Scho1ar/scripts.git"
+    askclone "vimwiki" "git@bitbucket.org:Nan0Scho1ar/vimwiki.git"
+    askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
+    askclone "bish" "git@github.com:Nan0Scho1ar/bish"
+    askclone "gitmanager" "git@github.com:Nan0Scho1ar/gitmanager"
+    askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
+    cd $HOME
+}
+#+end_src
+
+* setup_ssh
+#+begin_src sh :tangle setup_ssh
+#!/bin/bash
+# setup_ssh: Propmts user to create new ssh keys if none exist
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:36:17 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+setup_ssh() {
+    if [ -d .ssh ]; then
+        echo ".ssh directory already exits, continuing...";
+    else
+        echo "Creating .ssh directory";
+        mkdir .ssh
+    fi
+    if [ -f .ssh/id_rsa.pub ]; then
+        echo "ssh key already exists";
+        echo "Using existing key";
+    else
+        echo "Generating ssh key..."
+        ssh-keygen
+    fi
+    ask "add public key to remotes" && cat .ssh/id_rsa.pub && echo "Add ssh key to bitbucket and github before continuing." \
+        && sh brave "https://bitbucket.org/account/settings/ssh-keys/" "https://github.com/settings/keys"
+    wait_any_key
+}
+#+end_src
+
+* setup_symlinks
+#+begin_src sh :tangle setup_symlinks
+#!/bin/bash
+# setup_symlinks: Sets up symlinks for a system
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 20:21:31 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+setup_symlinks() {
+    #asklinksudo "/etc/update-motd.d/10-help-text" "/home/nan0scho1ar/dotfiles/linux/99-banner" "/etc/update-motd.d/99-banner"
+    asklink ".bashrc" "$NANOS_REPOS_DIR/dotfiles/.bashrc" "$HOME/.bashrc"
+    asklink ".xinitrc" "$NANOS_REPOS_DIR/dotfiles/.xinitrc" "$HOME/.xinitrc"
+    asklink ".profile" "$NANOS_REPOS_DIR/dotfiles/.profile" "$HOME/.profile"
+    asklink ".vimrc" "$NANOS_REPOS_DIR/dotfiles/.vimrc" "$HOME/.vimrc"
+    asklink ".xprofile" "$NANOS_REPOS_DIR/dotfiles/.xprofile" "$HOME/.xprofile"
+    asklink ".zshenv" "$NANOS_REPOS_DIR/dotfiles/.zshenv" "$HOME/.zshenv"
+    asklink ".tmux.conf" "$NANOS_REPOS_DIR/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
+    askrecursivelinkdir ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
+    askrecursivelinkdir ".doom.d" "$NANOS_REPOS_DIR/dotfiles/.doom.d" "$HOME/.doom.d"
+    asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
+    asklinksudo "/etc/thinkfan.conf" "$NANOS_REPOS_DIR/dotfiles/etc/thinkfan.conf" "/etc/thinkfan.conf"
+    asklinksudo "awesome/rc.lua" "$NANOS_REPOS_DIR/dotfiles/etc/xdg/awesome/rc.lua" "/etc/xdg/awesome/rc.lua"
+    mkdir -p $HOME/.config/z/
+    source $HOME/.profile
+}
+#+end_src
+
+* test.toml
+#+begin_src text :tangle test.toml
+# This is a TOML document
+
+title = "TOML Example"
+"quoted" = "Quoted Example"
+
+[owner]
+name = "Tom Preston-Werner"
+dob = 1979-05-27T07:32:00-08:00
+
+[database]
+enabled = true
+ports = [ 8001, 8001, 8002 ]
+data = [ ["delta", "phi"], [3.14] ]
+temp_targets = { cpu = 79.5, case = 72.0 }
+
+[servers]
+
+[servers.alpha]
+ip = "10.0.0.1"
+role = "frontend"
+
+[servers.beta]
+ip = "10.0.0.2"
+role = "backend"
+#+end_src
+
+* tmux_setup
+#+begin_src sh :tangle tmux_setup
+#!/bin/bash
+# tmux_setup: Installs tmux plugin manager
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:41:50 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+tmux_setup() {
+    if [ -d "$HOME/.tmux/plugins" ];then
+        echo "tmux plugin manager (tpm) already installed"
+    elif ask "Install tmux plugin manager"; then
+        mkdir -p $HOME/.tmux/plugins/
+        git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+    fi
+}
+#+end_src
+
+* tolower
+#+begin_src sh :tangle tolower
+#!/bin/sh
+# TOLOWER: Converts all chars in stdin to lowercase
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 8/12/2020
+# License: MIT License
+tolower() { sed 's/./\L&/g' /dev/stdin; }
+#+end_src
+
+* toml
+#+begin_src sh :tangle toml
+#!/bin/bash
+# TOML: Simple get commands to read toml files
+# (Not all featues supported)
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 27/10/2020
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+toml() {
+    flatten() {
+        comment_regex="^\s*#"
+        header_regex="\s*\[.*\]"
+        value_regex="\s*.*=.*"
+        extract_header="s/\[//g; s/\]//g; s/ //g; s/\t//g; s/\n//g"
+        extract_value="s/^\s*//; s/\t//g; s/\n//; s/ =/=/; s/= /=/"
+
+        parent=""
+        while IFS= read -r line; do
+            if [[ $line =~ $comment_regex ]]; then
+                continue
+            elif [[ $line =~ $header_regex ]]; then
+                parent=$(sed "$extract_header" <<< "$line")
+            elif [[ $line =~ $value_regex ]]; then
+                if [ -z $parent ]; then
+                    sed "$extract_value" <<< "$line"
+                else
+                    echo "$parent.$(sed "$extract_value" <<< "$line")"
+                fi
+            fi
+        done < /dev/stdin
+    }
+
+    #Returns the first value which matches the header
+    get_value() {
+        match="$1=.*"
+        while IFS= read -r line; do
+            if [[ $line =~ $match ]]; then
+                sed "s/^.*=//" <<< "$line" | tr -d '"'
+                break
+            fi
+        done < <(cat /dev/stdin | flatten)
+    }
+
+    # Returns all headers and values matching the input
+    get() {
+        match="^$1.*"
+        while IFS= read -r line; do
+            if [[ $line =~ $match ]]; then
+                echo "$line"
+            fi
+        done < <(cat /dev/stdin | flatten)
+    }
+
+    case "$1" in
+        "get") cat /dev/stdin | get "$2" ;;
+        "get_value") cat /dev/stdin | get_value "$2" ;;
+        "-V") echo "toml: version 0.7.1" ;;
+        *) echo "Error: Unknown option";;
+    esac
+}
+#+end_src
+
+* toml.py
+#+begin_src python :tangle toml.py
+#!/usr/bin/env python3
+# toml.py: Read values from a toml file
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Fri 17 Sep 2021 14:48:03 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import sys
+import re
+
+def flatten(lines):
+    flat = []
+    for line in lines:
+        if re.match("^\s*#", line):
+            continue
+        elif re.match("\s*\[.*\]", line):
+            parent = line.replace("[", "").replace("]", "").replace(" ", "").replace("\t", "").replace("\n", "")
+        elif re.match("\s*.*=.*", line):
+            flat.append(parent + "." + re.sub("^\s*", "", line).replace("\t", "").replace("\n", "").replace(" =", "=").replace("= ", "="))
+    return flat
+
+# TODO support multiline arrays
+# Returns first match
+def get(key):
+    flat = flatten(sys.stdin)
+    for line in flat:
+        if key + "=" in line:
+            result = re.sub(".*=", "", line)
+            return result[1:-1] if re.match("^\".*\"$", result) else result
+
+def get_headers(key):
+    flat = flatten(sys.stdin)
+    matches = []
+    for line in flat:
+        if key == line[:len(key)]:
+            matches.append(line)
+    return matches
+
+
+if sys.argv[1] == "get":
+    print(get(sys.argv[2]))
+elif sys.argv[1] == "get_headers":
+    for match in get_headers(sys.argv[2]):
+        print(match)
+#+end_src
+
+* toomuxh
+#+begin_src sh :tangle toomuxh
+#!/bin/bash
+#AUTHOR: Nan0Scho1ar
+#License: GPL v3
+#Script for running nested tmux sessions
+#Calls recursively to add additional information
+
+case $1 in
+    sys)
+        toomuxh system $HOME/repos/me/dotfiles/tmux/sys.sh $2
+        ;;
+    local)
+        TMUX= ;
+        toomuxh $HOSTNAME $HOME/repos/me/dotfiles/tmux/local.sh $2
+        ;;
+    cluster)
+        TMUX= ;
+        toomuxh ${HOSTNAME}_C $HOME/repos/me/dotfiles/tmux/cluster.sh $2
+        ;;
+    *)
+        SESSION="$1"
+        CONFIG="$2"
+        case $3 in
+            q|quit|Q|QUIT|Quit|exit|Exit)
+                if tmux has-session -t $SESSION 2>/dev/null; then
+                    tmux kill-session -t $SESSION 2>/dev/null &&
+                        echo "Killed tmux session '$SESSION'" ||
+                        echo "Failed to kill tmux session '$SESSION'"
+                else
+                    echo "Tmux session '$SESSION' does not exist"
+                fi
+                exit
+                ;;
+            *)
+                echo "SESSION=$SESSION"
+                echo "CONFIG=$CONFIG"
+                if tmux has-session -t $SESSION 2>/dev/null; then
+                    tmux -2 attach-session -t $SESSION 2>/dev/null ||
+                    echo "Failed to attach tmux session '$SESSION'"
+                else
+                    tmux -2 new-session -s $SESSION $CONFIG
+                    tmux -2 new-session -d -s $SESSION $CONFIG
+                    tmux -2 attach-session -t $SESSION
+                fi
+                ;;
+        esac
+        ;;
+esac
+#+end_src
+
+* toupper
+#+begin_src sh :tangle toupper
+#!/bin/sh
+# TOUPPER: Converts all chars in stdin to uppercase
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 8/12/2020
+# License: MIT License
+toupper() { sed 's/./\U&/g' /dev/stdin; }
+#+end_src
+
+* transpose
+#+begin_src sh :tangle transpose
+#!/bin/sh
+# TRANSPOSE: Swap columns and rows separated by spaces
+# Author: https://stackoverflow.com/users/459745/hai-vu
+# Question: https://stackoverflow.com/questions/9534744/how-to-transfer-the-data-of-columns-to-rows-with-awk
+# Created: 9/12/2020
+# License: MIT License
+awk '{ for (i=1; i<=NF; i++) col[i] = col[i] " " $i }
+END {
+    for (i=1; i<=NF; i++) {
+        sub(/^ /, "", col[i]);
+        print col[i]
+    }
+}' $1
+#+end_src
+
+* trapinput
+#+begin_src sh :tangle trapinput
+#!/bin/bash
+
+hideinput()
+{
+  if [ -t 0 ]; then
+     echo "Is tty"
+     save_state=$(stty -g)
+     stty -echo -icanon time 0 min 0
+     echo -ne "\e[?1049h\r" 1>&2;
+  else
+    echo "is not tty"
+  fi
+}
+
+cleanup()
+{
+  if [ -t 0 ]; then
+    stty "$save_state"
+    echo -ne "\e[?1049l" 1>&2;
+    echo "exit tty"
+  else
+    echo "is not tty"
+  fi
+}
+
+trap 'cleanup < /dev/tty' EXIT
+trap 'hideinput < /dev/tty' CONT
+hideinput
+
+input="$(< /dev/stdin)";
+echo "$input"
+while true;
+do
+  read -r -sn1 < /dev/tty;
+  read -r -sn3 -t 0.001 k1 < /dev/tty;
+  REPLY+=$k1;
+  echo $REPLY
+done
+#+end_src
+
+* tryaptinstall
+#+begin_src sh :tangle tryaptinstall
+#!/bin/bash
+# tryaptinstall: Prompt the user to install packages using apt
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:27:28 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+tryaptinstall() {
+    dpkg-query -W -f='${Status}' $1 2>/dev/null | grep -q "install ok installed" && echo "${green}$1${reset} is already installed" && return
+    ask "${magenta}$1${reset} is not installed, would you like to install it" && sudo apt-get --yes install $1
+}
+#+end_src
+
+* tryaurinstall
+#+begin_src sh :tangle tryaurinstall
+#!/bin/bash
+# tryaurinstall: Prompt the user to install list of packages using AUR helper
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:25:57 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+tryaurinstall() {
+    pkgs=`echo $@ | sed "s/--prompt //"`
+    for pkg in $pkgs; do
+        pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
+        #Idk if this check works properly
+        pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "${gree}$pkg${reset} is already installed" && continue
+        if [[ $1 == "--prompt" ]]; then
+            ask "install $pkg" || continue
+        fi
+        echo "${red}Installing $pkg${reset}" && yay -S $pkg;
+    done
+}
+#+end_src
+
+* trylink
+#+begin_src sh :tangle trylink
+#!/bin/bash
+# trylink: Tries to create a symlink
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:32:19 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+trylink() {
+    if [ "$(diff -q "$1" "$2")" != "" ]; then
+        ask "${magenta}$2${reset} already exists and is not identical. Show diff" &&
+            diff "$1" "$2"
+        ask "Remove ${red}$2${reset}" && rm "$2"
+    else
+        rm "$2"
+    fi
+    echo "Linking ${magenta}$2${reset}"
+    ln -sf "$1" "$2"
+}
+#+end_src
+
+* trypacmaninstall
+#+begin_src sh :tangle trypacmaninstall
+#!/bin/bash
+# trypacmaninstall:  Prompts the user to install packages in the list
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 18:36:30 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+trypacmaninstall() {
+    pkgs=`echo $@ | sed "s/--prompt //"`
+    for pkg in $pkgs; do
+        pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
+        #Idk if this check works properly
+        pacman -Qg  "$pkg@" 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
+        if [[ $1 == "--prompt" ]]; then
+            ask "install $pkg" || continue
+        fi
+        echo "${red}Installing $pkg${reset}" && sudo pacman -S --noconfirm $pkg;
+    done
+}
+#+end_src
+
+* ubuntu_pkg_setup
+#+begin_src sh :tangle ubuntu_pkg_setup
+#!/bin/bash
+# ubuntu_pkg_setup: Script to install ubuntu packages
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:39:47 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+ubuntu_pkg_setup() {
+    tryaptinstall ripgrep
+    tryaptinstall fzf
+    tryaptinstall keychain
+    tryaptinstall tmux
+    tryaptinstall curl
+    tryaptinstall youtube-dl
+    tryaptinstall vim
+    tryaptinstall neovim
+    tryaptinstall nodejs
+    tryaptinstall zsh
+
+    tryaptinstall fd-find
+    #fd is already used on Ubuntu
+    if dpkg-query -W -f='${Status}' fd-find 2> /dev/null | grep -q "install ok installed"; then
+        asklink "fdfind (ubuntu fix)" "$(which fdfind)" "$HOME/.local/bin/fd"
+    fi
+    #Bat is not in standard repos because reasons
+    if dpkg-query -W -f='${Status}' bat 2> /dev/null | grep -q "install ok installed"; then
+        echo "${green}bat${reset} is already installed"
+    elif ask "'${magenta}bat${reset}' is not installed, would you like to install it"; then
+        cur_dir=$(pwd)
+        cd /tmp
+        wget https://github.com/sharkdp/bat/releases/download/v0.17.1/bat_0.17.1_amd64.deb
+        sudo dpkg -i bat_0.17.1_amd64.deb
+        cd $cur_dir
+    fi
+    ###TODO Install Rider
+}
+#+end_src
+
+* useless
+#+begin_src sh :tangle useless
+#!/bin/sh
+# USELESS: less but less code. Seriously, just use less.
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 30/10/2020
+# License: MIT License
+# 20 line pager. Not very useful in its current form but easily extended
+
+useless() {
+    lines="$(cat "$1" || cat /dev/stdin)"
+    numlines="$(echo "$lines" | wc -l)" && height="$(tput lines)" && \
+    echo -e "\e[?1049h" && row=1 && col=1 && regex="" || return 1
+    while true; do
+        echo "$lines" | sed -n "$row,$((row+height-2))p;$((row+height-2))q"\
+            | cut -c $col- | grep --colour=always "^\|$regex";
+        read -rsn1 -p ":" < /dev/tty char && echo -e "$(tput el1)\r"
+        case $char in
+            'q') echo -e "\e[?1049l" && return;;
+            'k') [[ $row -gt 1 ]] && row=$((row-1));;
+            'j') [[ $row -lt $numlines ]] && row=$((row+1));;
+            'h') [[ $col -gt 1 ]] && col=$((col-1));;
+            'l') col=$((col+1));;
+            'g') row=1;;
+            'G') row=$numlines;;
+            '/') read -p "/" < /dev/tty regex;;
+        esac
+    done
+}
+#+end_src
+
+* vim_setup
+#+begin_src sh :tangle vim_setup
+#!/bin/bash
+# vim_setup: Install vimplug and plugins
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:40:42 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+vim_setup() {
+    #Setup vim/nvim
+    if [ -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ] && [ -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
+        echo "${green}vimplug already installed${reset}"
+    elif ask "Install vim/nvim plugins"; then
+        if [ $NANOS_NAME = "linux" ]; then
+            if [ ! -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ]; then
+                echo "$XDG_DATA_HOME/vim/autoload/plug.vim not found. Downloading..."
+                curl -fLo $HOME/.vim/autoload/plug.vim --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+                vim -E -s +PlugInstall +visual +qall
+            fi
+
+
+            if [ ! -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
+                echo "$HOME/.config/nvim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
+                curl -fLo "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+            fi
+
+            if [ ! -f "$XDG_DATA_HOME/n0s1vim/site/autoload/plug.vim" ]; then
+                echo "$HOME/.config/n0s1vim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
+                curl -fLo "$XDG_DATA_HOME/n0s1vim/site/autoload/plug.vim" --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+            fi
+        fi
+    fi
+}
+#+end_src
+
+* waitanykey
+#+begin_src sh :tangle waitanykey
+#!/bin/bash
+# wait_any_key: Waits for the user to press any key
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:28:22 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+wait_any_key() { read -n 1 -s -r -p "Press any key to continue"; }
+#+end_src
+
+* z.sh
+#+begin_src sh :tangle z.sh
+#!/bin/sh
+# Z: Jump around easily
+# Created: 6/12/2020
+# Copyright (c) 2009 rupa deadwyler. Licensed under the WTFPL license, Version 2
+# Copyright (c) 2020 Nan0Scho1ar (Christopher Mackinga)
+
+# maintains a jump-list of the directories you actually use
+#
+# INSTALL:
+#     * put something like this in your .bashrc/.zshrc:
+#         . /path/to/z.sh
+#     * cd around for a while to build up the db
+#     * PROFIT!!
+#     * optionally:
+#         set $_Z_CMD in .bashrc/.zshrc to change the command (default z).
+#         set $_Z_DATA in .bashrc/.zshrc to change the datafile (default ~/.z).
+#         set $_Z_MAX_SCORE lower to age entries out faster (default 9000).
+#         set $_Z_NO_RESOLVE_SYMLINKS to prevent symlink resolution.
+#         set $_Z_NO_PROMPT_COMMAND if you're handling PROMPT_COMMAND yourself.
+#         set $_Z_EXCLUDE_DIRS to an array of directories to exclude.
+#         set $_Z_OWNER to your username if you want use z while sudo with $HOME kept
+#
+# USE:
+#     * z foo     # cd to most frecent dir matching foo
+#     * z foo bar # cd to most frecent dir matching foo and bar
+#     * z -r foo  # cd to highest ranked dir matching foo
+#     * z -t foo  # cd to most recently accessed dir matching foo
+#     * z -l foo  # list matches instead of cd
+#     * z -e foo  # echo the best match, don't cd
+#     * z -c foo  # restrict matches to subdirs of $PWD
+#     * z -x      # remove the current directory from the datafile
+#     * z -h      # show a brief help message
+z() {
+
+    [ -d "${_Z_DATA:-$HOME/.z}" ] && {
+        echo "ERROR: z.sh's datafile (${_Z_DATA:-$HOME/.z}) is a directory."
+    }
+
+    _z() {
+
+        local datafile="${_Z_DATA:-$HOME/.z}"
+
+        # if symlink, dereference
+        [ -h "$datafile" ] && datafile=$(readlink "$datafile")
+
+        # bail if we don't own ~/.z and $_Z_OWNER not set
+        [ -z "$_Z_OWNER" -a -f "$datafile" -a ! -O "$datafile" ] && return
+
+        _z_dirs () {
+            local line
+            while read line; do
+                # only count directories
+                [ -d "${line%%\|*}" ] && echo "$line"
+            done < "$datafile"
+            return 0
+        }
+
+        # add entries
+        if [ "$1" = "--add" ]; then
+            shift
+
+            # $HOME isn't worth matching
+            [ "$*" = "$HOME" ] && return
+
+            # don't track excluded directory trees
+            local exclude
+            for exclude in "${_Z_EXCLUDE_DIRS[@]}"; do
+                case "$*" in "$exclude*") return;; esac
+            done
+
+            # maintain the data file
+            local tempfile="$datafile.$RANDOM"
+            local score=${_Z_MAX_SCORE:-90000}
+            _z_dirs | awk -v path="$*" -v now="$(date +%s)" -v score=$score -F"|" '
+                BEGIN {
+                    rank[path] = 1
+                    time[path] = now
+                }
+                $2 >= 1 {
+                    # drop ranks below 1
+                    if( $1 == path ) {
+                        rank[$1] = $2 + 1
+                        time[$1] = now
+                    } else {
+                        rank[$1] = $2
+                        time[$1] = $3
+                    }
+                    count += $2
+                }
+                END {
+                    if( count > score ) {
+                        # aging
+                        for( x in rank ) print x "|" 0.99*rank[x] "|" time[x]
+                    } else for( x in rank ) print x "|" rank[x] "|" time[x]
+                }
+            ' 2>/dev/null >| "$tempfile"
+            # do our best to avoid clobbering the datafile in a race condition.
+            if [ $? -ne 0 -a -f "$datafile" ]; then
+                env rm -f "$tempfile"
+            else
+                [ "$_Z_OWNER" ] && chown $_Z_OWNER:"$(id -ng $_Z_OWNER)" "$tempfile"
+                env mv -f "$tempfile" "$datafile" || env rm -f "$tempfile"
+            fi
+
+        # tab completion
+        elif [ "$1" = "--complete" -a -s "$datafile" ]; then
+            _z_dirs | awk -v q="$2" -F"|" '
+                BEGIN {
+                    q = substr(q, 3)
+                    if( q == tolower(q) ) imatch = 1
+                    gsub(/ /, ".*", q)
+                }
+                {
+                    if( imatch ) {
+                        if( tolower($1) ~ q ) print $1
+                    } else if( $1 ~ q ) print $1
+                }
+            ' 2>/dev/null
+
+        else
+            # list/go
+            local echo fnd last list opt typ
+            while [ "$1" ]; do case "$1" in
+                --) while [ "$1" ]; do shift; fnd="$fnd${fnd:+ }$1";done;;
+                -*) opt=${1:1}; while [ "$opt" ]; do case ${opt:0:1} in
+                        c) fnd="^$PWD $fnd";;
+                        e) echo=1;;
+                        h) echo "${_Z_CMD:-z} [-cehlrtx] args" >&2; return;;
+                        l) list=1;;
+                        r) typ="rank";;
+                        t) typ="recent";;
+                        x) sed -i -e "\:^${PWD}|.*:d" "$datafile";;
+                    esac; opt=${opt:1}; done;;
+                 *) fnd="$fnd${fnd:+ }$1";;
+            esac; last=$1; [ "$#" -gt 0 ] && shift; done
+            [ "$fnd" -a "$fnd" != "^$PWD " ] || list=1
+
+            # if we hit enter on a completion just go there
+            case "$last" in
+                # completions will always start with /
+                /*) [ -z "$list" -a -d "$last" ] && builtin cd "$last" && return;;
+            esac
+
+            # no file yet
+            [ -f "$datafile" ] || return
+
+            local cd
+            cd="$( < <( _z_dirs ) awk -v t="$(date +%s)" -v list="$list" -v typ="$typ" -v q="$fnd" -F"|" '
+                function frecent(rank, time) {
+                  # relate frequency and time
+                  dx = t - time
+                  return int(10000 * rank * (3.75/((0.0001 * dx + 1) + 0.25)))
+                }
+                function output(matches, best_match, common) {
+                    # list or return the desired directory
+                    if( list ) {
+                        if( common ) {
+                            printf "%-10s %s\n", "common:", common > "/dev/stderr"
+                        }
+                        cmd = "sort -n >&2"
+                        for( x in matches ) {
+                            if( matches[x] ) {
+                                printf "%-10s %s\n", matches[x], x | cmd
+                            }
+                        }
+                    } else {
+                        if( common && !typ ) best_match = common
+                        print best_match
+                    }
+                }
+                function common(matches) {
+                    # find the common root of a list of matches, if it exists
+                    for( x in matches ) {
+                        if( matches[x] && (!short || length(x) < length(short)) ) {
+                            short = x
+                        }
+                    }
+                    if( short == "/" ) return
+                    for( x in matches ) if( matches[x] && index(x, short) != 1 ) {
+                        return
+                    }
+                    return short
+                }
+                BEGIN {
+                    gsub(" ", ".*", q)
+                    hi_rank = ihi_rank = -9999999999
+                }
+                {
+                    if( typ == "rank" ) {
+                        rank = $2
+                    } else if( typ == "recent" ) {
+                        rank = $3 - t
+                    } else rank = frecent($2, $3)
+                    if( $1 ~ q ) {
+                        matches[$1] = rank
+                    } else if( tolower($1) ~ tolower(q) ) imatches[$1] = rank
+                    if( matches[$1] && matches[$1] > hi_rank ) {
+                        best_match = $1
+                        hi_rank = matches[$1]
+                    } else if( imatches[$1] && imatches[$1] > ihi_rank ) {
+                        ibest_match = $1
+                        ihi_rank = imatches[$1]
+                    }
+                }
+                END {
+                    # prefer case sensitive
+                    if( best_match ) {
+                        output(matches, best_match, common(matches))
+                        exit
+                    } else if( ibest_match ) {
+                        output(imatches, ibest_match, common(imatches))
+                        exit
+                    }
+                    exit(1)
+                }
+            ')"
+
+            if [ "$?" -eq 0 ]; then
+              if [ "$cd" ]; then
+                if [ "$echo" ]; then echo "$cd"; else builtin cd "$cd"; fi
+              fi
+            else
+              return $?
+            fi
+        fi
+    }
+
+    alias ${_Z_CMD:-z}='_z 2>&1'
+
+    [ "$_Z_NO_RESOLVE_SYMLINKS" ] || _Z_RESOLVE_SYMLINKS="-P"
+
+    if type compctl >/dev/null 2>&1; then
+        # zsh
+        [ "$_Z_NO_PROMPT_COMMAND" ] || {
+            # populate directory list, avoid clobbering any other precmds.
+            if [ "$_Z_NO_RESOLVE_SYMLINKS" ]; then
+                _z_precmd() {
+                    (_z --add "${PWD:a}" &)
+                    : $RANDOM
+                }
+            else
+                _z_precmd() {
+                    (_z --add "${PWD:A}" &)
+                    : $RANDOM
+                }
+            fi
+            [[ -n "${precmd_functions[(r)_z_precmd]}" ]] || {
+                precmd_functions[$(($#precmd_functions+1))]=_z_precmd
+            }
+        }
+        _z_zsh_tab_completion() {
+            # tab completion
+            local compl
+            read -l compl
+            reply=(${(f)"$(_z --complete "$compl")"})
+        }
+        compctl -U -K _z_zsh_tab_completion _z
+    elif type complete >/dev/null 2>&1; then
+        # bash
+        # tab completion
+        complete -o filenames -C '_z --complete "$COMP_LINE"' ${_Z_CMD:-z}
+        [ "$_Z_NO_PROMPT_COMMAND" ] || {
+            # populate directory list. avoid clobbering other PROMPT_COMMANDs.
+            grep "_z --add" <<< "$PROMPT_COMMAND" >/dev/null || {
+                PROMPT_COMMAND="$PROMPT_COMMAND"$'\n''(_z --add "$(command pwd '$_Z_RESOLVE_SYMLINKS' 2>/dev/null)" 2>/dev/null &);'
+            }
+        }
+    fi
+}
+#+end_src
+

@@ -1,0 +1,32 @@
+#!/bin/bash
+# setup_repos: sets up repos for a system
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 20:23:47 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+setup_repos() {
+    mkdir -p "$NANOS_REPOS_DIR"
+    cd $NANOS_REPOS_DIR
+    askclone "dotfiles" "git@bitbucket.org:Nan0Scho1ar/dotfiles.git"
+    askclone "scripts" "git@bitbucket.org:Nan0Scho1ar/scripts.git"
+    askclone "vimwiki" "git@bitbucket.org:Nan0Scho1ar/vimwiki.git"
+    askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
+    askclone "bish" "git@github.com:Nan0Scho1ar/bish"
+    askclone "gitmanager" "git@github.com:Nan0Scho1ar/gitmanager"
+    askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
+    cd $HOME
+}

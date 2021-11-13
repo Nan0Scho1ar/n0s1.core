@@ -1,0 +1,32 @@
+#!/bin/bash
+# asklinksudo: prompts user to create a symlink which requires sudo
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:34:34 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+asklinksudo() {
+    if [ "$(readlink -- $3)" = $2 ]; then
+        echo "${green}$1${reset} already linked correctly"
+    elif ask "Link ${magenta}$1${reset}"; then
+        #Create dir if not exist
+        mkdir -p "$(dirname "${3}")"
+        if [ -f "$3" ]; then
+            ask "${red}$1${reset} already exists. Remove it?" && sudo rm "$3"
+        fi
+        sudo ln -sf "$2" "$3"
+    fi
+}
