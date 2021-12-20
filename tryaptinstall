@@ -22,3 +22,4 @@ tryaptinstall() {
     dpkg-query -W -f='${Status}' $1 2>/dev/null | grep -q "install ok installed" && echo "${green}$1${reset} is already installed" && return
     ask "${magenta}$1${reset} is not installed, would you like to install it" && sudo apt-get --yes install $1
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tryaptinstall $@

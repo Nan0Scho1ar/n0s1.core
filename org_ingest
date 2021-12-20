@@ -4,7 +4,12 @@
 dir="$([ -z $1 ] && pwd || echo $1)"
 while IFS= read -r fname; do
     echo "* $fname"
-    echo "#+begin_src sh :tangle $fname"
+    head="$(head -n1 "$fname")"
+    if [[ $head =~ ^#! ]]; then
+        echo "#+begin_src sh :tangle $fname :tangle-mode (identity #o755)"
+    else
+        echo "#+begin_src sh :tangle $fname"
+    fi
     cat "$fname"
     echo "#+end_src"
     echo

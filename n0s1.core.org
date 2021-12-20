@@ -1,6 +1,7 @@
+#+auto_tangle: t
 * n0s1.core Webserver
 ** wsgi.py
-#+begin_src python :tangle wsgi.py
+#+begin_src python :tangle wsgi.py :tangle-mode (identity #o755)
 from app import app
 
 if __name__ == "__main__":
@@ -8,7 +9,7 @@ if __name__ == "__main__":
 #+end_src
 
 ** app.py
-#+begin_src python :tangle app.py
+#+begin_src python :tangle app.py :tangle-mode (identity #o755)
 #!/bin/python
 # APP.PY: Flask server to serve html or plain text depending on client's useragent string
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -100,7 +101,7 @@ if __name__ == '__main__':
 
 * Bookmarks
 ** bm
-#+begin_src sh :tangle bm
+#+begin_src sh :tangle bm :tangle-mode (identity #o755)
 #!/bin/sh
 # BM: Bookmarks
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -131,7 +132,7 @@ fi
 #+end_src
 
 ** cb
-#+begin_src sh :tangle cb
+#+begin_src sh :tangle cb :tangle-mode (identity #o755)
 #!/bin/sh
 # CB: cd bookmarks
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -152,7 +153,7 @@ cb() {
 #+end_src
 
 ** ef
-#+begin_src sh :tangle ef
+#+begin_src sh :tangle ef :tangle-mode (identity #o755)
 #!/bin/sh
 # EF: Edit bookmarked files
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -172,7 +173,7 @@ ef() {
 #+end_src
 
 * ask
-#+begin_src sh :tangle ask
+#+begin_src sh :tangle ask :tangle-mode (identity #o755)
 #!/bin/bash
 # ask: Promts the user to answer a yes/no question.
 # Returns after a single char is entered without hitting return.
@@ -201,10 +202,11 @@ ask() {
         [[ $REPLY =~ ^[Nn]$ ]] && return 1
     done
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || ask $@
 #+end_src
 
 * awkp
-#+begin_src sh :tangle awkp
+#+begin_src sh :tangle awkp :tangle-mode (identity #o755)
 #!/bin/sh
 #AWKP: awk print colums
 #Author: Nan0Scho1ar (Christopher Mackinga)
@@ -219,7 +221,7 @@ fi
 #+end_src
 
 * check_root
-#+begin_src sh :tangle check_root
+#+begin_src sh :tangle check_root :tangle-mode (identity #o755)
 #!/bin/sh
 # CHECK_ROOT: Throws an error if the current user is not root
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -230,7 +232,7 @@ check_root () { [[ $EUID - 0 ]] && echo "Error this must be run as root"  && ret
 #+end_src
 
 * colours
-#+begin_src sh :tangle colours
+#+begin_src sh :tangle colours :tangle-mode (identity #o755)
 green=`tput setaf 2`
 red=`tput setaf 1`
 yellow=`tput setaf 3`
@@ -243,7 +245,7 @@ reset=`tput sgr0`
 #+end_src
 
 * discordwebhooks
-#+begin_src sh :tangle discordwebhooks
+#+begin_src sh :tangle discordwebhooks :tangle-mode (identity #o755)
 #!/bin/sh
 # DISCORD_WEBHOOKS: Tool for managing and messaging using discord webhooks
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -271,7 +273,7 @@ fi
 #+end_src
 
 * exprq
-#+begin_src sh :tangle exprq
+#+begin_src sh :tangle exprq :tangle-mode (identity #o755)
 #!/bin/bash
 # exprx: syntactic sugar for expr to test if regex matches
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -295,7 +297,7 @@ exprq() { expr "$1" : "$2" 1>/dev/null; }
 #+end_src
 
 * fzy
-#+begin_src sh :tangle fzy
+#+begin_src sh :tangle fzy :tangle-mode (identity #o755)
 #!/bin/bash
 # FZY: Command Line Fuzzy Finder
 # Created: 29/10/2020
@@ -372,7 +374,7 @@ done
 #+end_src
 
 ** fzy_lite
-#+begin_src sh :tangle fzy_lite
+#+begin_src sh :tangle fzy_lite :tangle-mode (identity #o755)
 #!/bin/sh
 # FZY_Lite: 10 SLOC Command Line Fuzzy Finder
 # Copyright: Nan0Scho1ar (Christopher Mackinga) MIT License (29/10/2020)
@@ -391,7 +393,7 @@ fzy_lite() {
 
 * A bit less
 ** hackless
-#+begin_src sh :tangle hackless
+#+begin_src sh :tangle hackless :tangle-mode (identity #o755)
 #!/bin/sh
 # LESS: The hackable less
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -430,7 +432,7 @@ hackless() {
 #+end_src
 
 ** useless
-#+begin_src sh :tangle useless
+#+begin_src sh :tangle useless :tangle-mode (identity #o755)
 #!/bin/sh
 # USELESS: less but less code. Seriously, just use less.
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -460,8 +462,10 @@ useless() {
 }
 #+end_src
 
+* TODO permhist
+permanent history using bm
 * hist
-#+begin_src sh :tangle hist
+#+begin_src sh :tangle hist :tangle-mode (identity #o755)
 #!/bin/sh
 # HIST: Shell history made easy
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -502,7 +506,7 @@ fi
 #+end_src
 
 * keyrepeat
-#+begin_src sh :tangle keyrepeat
+#+begin_src sh :tangle keyrepeat :tangle-mode (identity #o755)
 #!/bin/bash
 
 hideinput()
@@ -564,7 +568,7 @@ done
 #+end_src
 
 * mkexecdir
-#+begin_src bash :tangle mkexecdir
+#+begin_src bash :tangle mkexecdir :tangle-mode (identity #o755)
 #!/bin/bash
 # mkexecdir: Make all files in current directory which begin with a shebang executable
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -596,9 +600,35 @@ while IFS= read -r fname; do
 done < <(ls -F | grep -v "/$") | column -ts $'\t'
 #+end_src
 
-* lsf
+* TODO lsf
+use fd if available
+find -maxdepth 1 -type f
+fd -d1 -tf
+* mkpath
+#+begin_src bash :tangle mkpath :tangle-mode (identity #o755)
+#!/bin/bash
+# mkpath: build a path variable using a dir and all sub dirs
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Wed 17 Nov 2021 16:32:14 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+find "$1" -type d | grep -v "\.git" | tr '\n' ':' | sed "s/:$//"
+#+end_src
 * n0s1
-#+begin_src sh :tangle n0s1
+#+begin_src sh :tangle n0s1 :tangle-mode (identity #o755)
 #!/bin/bash
 
 green=`tput setaf 2`
@@ -711,7 +741,7 @@ fi
 #+end_src
 
 * TODO n0s1m
-#+begin_src sh :tangle n0s1m
+#+begin_src sh :tangle n0s1m :tangle-mode (identity #o755)
 #!/bin/bash
 #n0s1m: n0s1 menu
 
@@ -719,14 +749,19 @@ fi
 #+end_src
 
 * org_ingest
-#+begin_src sh :tangle org_ingest
+#+begin_src sh :tangle org_ingest :tangle-mode (identity #o755)
 #!/bin/bash
 # Ingest a directory full of files to tangled script blocks in a org file.
 
 dir="$([ -z $1 ] && pwd || echo $1)"
 while IFS= read -r fname; do
     echo "* $fname"
-    echo "#+begin_src sh :tangle $fname"
+    head="$(head -n1 "$fname")"
+    if [[ $head =~ ^#! ]]; then
+        echo "#+begin_src sh :tangle $fname :tangle-mode (identity #o755)"
+    else
+        echo "#+begin_src sh :tangle $fname"
+    fi
     cat "$fname"
     echo "#+end_src"
     echo
@@ -734,7 +769,7 @@ done < <(ls -p "$dir" | grep -v /)
 #+end_src
 
 * README.md
-#+begin_src md :tangle README.md
+#+begin_src md :tangle README.md :tangle-mode (identity #o755)
 # n0s1.core
 
 ### Several suckless shell scripts and other core features.
@@ -794,7 +829,7 @@ Script to set up parts of NanOS
 #+end_src
 
 * toomuxh
-#+begin_src sh :tangle toomuxh
+#+begin_src sh :tangle toomuxh :tangle-mode (identity #o755)
 #!/bin/bash
 #AUTHOR: Nan0Scho1ar
 #License: GPL v3
@@ -846,7 +881,7 @@ esac
 
 * TOML
 ** readtoml
-#+begin_src sh :tangle readtoml
+#+begin_src sh :tangle readtoml :tangle-mode (identity #o755)
 #!/bin/bash
 # READ_TOML: One line script to read from a toml file
 # Author: Nan0Scho1ar
@@ -870,7 +905,7 @@ sed -n "s/#.*//g;$([[ $1 =~ \. ]] && echo "/^\s*\[`sed 's/\..*//' <<< $1`\]/" ||
 #+end_src
 
 ** test.toml
-#+begin_src text :tangle test.toml
+#+begin_src text :tangle test.toml :tangle-mode (identity #o755)
 # This is a TOML document
 
 title = "TOML Example"
@@ -898,7 +933,7 @@ role = "backend"
 #+end_src
 
 ** toml
-#+begin_src sh :tangle toml
+#+begin_src sh :tangle toml :tangle-mode (identity #o755)
 #!/bin/bash
 # TOML: Simple get commands to read toml files
 # (Not all featues supported)
@@ -974,7 +1009,7 @@ toml() {
 #+end_src
 
 ** toml.py
-#+begin_src python :tangle toml.py
+#+begin_src python :tangle toml.py :tangle-mode (identity #o755)
 #!/usr/bin/env python3
 # toml.py: Read values from a toml file
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1033,9 +1068,34 @@ elif sys.argv[1] == "get_headers":
         print(match)
 #+end_src
 
+* Sexec
+#+begin_src bash :tangle sexec :tangle-mode (identity #o755)
+#!/bin/bash
+# sexec: Source and execute a shell function from a file
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Wed 17 Nov 2021 18:24:40 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+source "$1"
+cmd="$1"
+shift
+$cmd $@
+#+end_src
 * Text and Input
 ** catenate
-#+begin_src sh :tangle catenate
+#+begin_src sh :tangle catenate :tangle-mode (identity #o755)
 #!/bin/sh
 # CATENATE: Prepend/Append data to stdin
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1043,11 +1103,11 @@ elif sys.argv[1] == "get_headers":
 # License: MIT License
 
 catenate()  { cat <(echo -n "$1") - <(echo -n "$2"); }
-[[ "${BASH_SOURCE[0]}" != "${0}" ]] || catenate
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || catenate $@
 #+end_src
 
 ** rd
-#+begin_src sh :tangle rd
+#+begin_src sh :tangle rd :tangle-mode (identity #o755)
 #!/bin/sh
 # RD: Read a character from the tty
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1092,7 +1152,7 @@ rd() {
 #+end_src
 
 ** rdln
-#+begin_src sh :tangle rdln
+#+begin_src sh :tangle rdln :tangle-mode (identity #o755)
 #!/bin/sh
 # RDLN: Read a line from the tty
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1115,29 +1175,29 @@ rdln() {
 #+end_src
 
 ** tolower
-#+begin_src bash :tangle tolower
+#+begin_src bash :tangle tolower :tangle-mode (identity #o755)
 #!/bin/bash
 # TOLOWER: Converts all chars in stdin to lowercase
 # Author: Nan0Scho1ar (Christopher Mackinga)
 # Created: 8/12/2020
 # License: MIT License
 tolower() { sed 's/./\L&/g' /dev/stdin; }
-[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tolower
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tolower $@
 #+end_src
 
 ** toupper
-#+begin_src bash :tangle toupper
+#+begin_src bash :tangle toupper :tangle-mode (identity #o755)
 #!/bin/bash
 # TOUPPER: Converts all chars in stdin to uppercase
 # Author: Nan0Scho1ar (Christopher Mackinga)
 # Created: 8/12/2020
 # License: MIT License
 toupper() { sed 's/./\U&/g' /dev/stdin; }
-[[ "${BASH_SOURCE[0]}" != "${0}" ]] || toupper
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || toupper $@
 #+end_src
 
 ** trapinput
-#+begin_src sh :tangle trapinput
+#+begin_src sh :tangle trapinput :tangle-mode (identity #o755)
 #!/bin/bash
 
 hideinput()
@@ -1179,7 +1239,7 @@ done
 #+end_src
 
 ** waitanykey
-#+begin_src bash :tangle waitanykey
+#+begin_src bash :tangle waitanykey :tangle-mode (identity #o755)
 #!/bin/bash
 # wait_any_key: Waits for the user to press any key
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1201,11 +1261,11 @@ done
 
 
 wait_any_key() { read -n 1 -s -r -p "Press any key to continue"; }
-[[ "${BASH_SOURCE[0]}" != "${0}" ]] || wait_any_key
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || wait_any_key $@
 #+end_src
 
 ** transpose
-#+begin_src sh :tangle transpose
+#+begin_src sh :tangle transpose :tangle-mode (identity #o755)
 #!/bin/sh
 # TRANSPOSE: Swap columns and rows separated by spaces
 # Author: https://stackoverflow.com/users/459745/hai-vu
@@ -1223,7 +1283,7 @@ END {
 
 * Setup
 ** setup
-#+begin_src sh :tangle setup
+#+begin_src sh :tangle setup :tangle-mode (identity #o755)
 #!/bin/bash
 # Script to init arch/ubuntu/windows_10 systems to nanOS
 #{{{ Colours
@@ -1328,7 +1388,7 @@ tmux_setup
 #+end_src
 
 ** vim_setup
-#+begin_src sh :tangle vim_setup
+#+begin_src sh :tangle vim_setup :tangle-mode (identity #o755)
 #!/bin/bash
 # vim_setup: Install vimplug and plugins
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1377,10 +1437,11 @@ vim_setup() {
         fi
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || vim_setup $@
 #+end_src
 
 ** tryaptinstall
-#+begin_src sh :tangle tryaptinstall
+#+begin_src sh :tangle tryaptinstall :tangle-mode (identity #o755)
 #!/bin/bash
 # tryaptinstall: Prompt the user to install packages using apt
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1405,10 +1466,11 @@ tryaptinstall() {
     dpkg-query -W -f='${Status}' $1 2>/dev/null | grep -q "install ok installed" && echo "${green}$1${reset} is already installed" && return
     ask "${magenta}$1${reset} is not installed, would you like to install it" && sudo apt-get --yes install $1
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tryaptinstall $@
 #+end_src
 
 ** tryaurinstall
-#+begin_src sh :tangle tryaurinstall
+#+begin_src sh :tangle tryaurinstall :tangle-mode (identity #o755)
 #!/bin/bash
 # tryaurinstall: Prompt the user to install list of packages using AUR helper
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1441,10 +1503,11 @@ tryaurinstall() {
         echo "${red}Installing $pkg${reset}" && yay -S $pkg;
     done
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tryaurinstall $@
 #+end_src
 
 ** trylink
-#+begin_src sh :tangle trylink
+#+begin_src sh :tangle trylink :tangle-mode (identity #o755)
 #!/bin/bash
 # trylink: Tries to create a symlink
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1476,10 +1539,11 @@ trylink() {
     echo "Linking ${magenta}$2${reset}"
     ln -sf "$1" "$2"
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || trylink $@
 #+end_src
 
 ** trypacmaninstall
-#+begin_src sh :tangle trypacmaninstall
+#+begin_src sh :tangle trypacmaninstall :tangle-mode (identity #o755)
 #!/bin/bash
 # trypacmaninstall:  Prompts the user to install packages in the list
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1510,10 +1574,11 @@ trypacmaninstall() {
         echo "${red}Installing $pkg${reset}" && sudo pacman -S --noconfirm $pkg;
     done
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || trypacmaninstall $@
 #+end_src
 
 ** ubuntu_pkg_setup
-#+begin_src sh :tangle ubuntu_pkg_setup
+#+begin_src sh :tangle ubuntu_pkg_setup :tangle-mode (identity #o755)
 #!/bin/bash
 # ubuntu_pkg_setup: Script to install ubuntu packages
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1563,10 +1628,11 @@ ubuntu_pkg_setup() {
     fi
     ###TODO Install Rider
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || ubuntu_pkg_setup $@
 #+end_src
 
 ** setup_git
-#+begin_src sh :tangle setup_git
+#+begin_src sh :tangle setup_git :tangle-mode (identity #o755)
 #!/bin/bash
 # setup_git: setup git settings
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1601,10 +1667,11 @@ setup_git() {
         git config --global core.editor "vim"
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_git $@
 #+end_src
 
 ** setup_repos
-#+begin_src sh :tangle setup_repos
+#+begin_src sh :tangle setup_repos :tangle-mode (identity #o755)
 #!/bin/bash
 # setup_repos: sets up repos for a system
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1637,10 +1704,11 @@ setup_repos() {
     askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
     cd $HOME
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_repos $@
 #+end_src
 
 ** setup_ssh
-#+begin_src sh :tangle setup_ssh
+#+begin_src sh :tangle setup_ssh :tangle-mode (identity #o755)
 #!/bin/bash
 # setup_ssh: Propmts user to create new ssh keys if none exist
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1678,10 +1746,11 @@ setup_ssh() {
         && sh brave "https://bitbucket.org/account/settings/ssh-keys/" "https://github.com/settings/keys"
     wait_any_key
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_ssh $@
 #+end_src
 
 ** setup_symlinks
-#+begin_src sh :tangle setup_symlinks
+#+begin_src sh :tangle setup_symlinks :tangle-mode (identity #o755)
 #!/bin/bash
 # setup_symlinks: Sets up symlinks for a system
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1711,18 +1780,19 @@ setup_symlinks() {
     asklink ".xprofile" "$NANOS_REPOS_DIR/dotfiles/.xprofile" "$HOME/.xprofile"
     asklink ".zshenv" "$NANOS_REPOS_DIR/dotfiles/.zshenv" "$HOME/.zshenv"
     asklink ".tmux.conf" "$NANOS_REPOS_DIR/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
-    askrecursivelinkdir ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
-    askrecursivelinkdir ".doom.d" "$NANOS_REPOS_DIR/dotfiles/.doom.d" "$HOME/.doom.d"
+    asklinkrecursive ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
+    asklinkrecursive ".doom.d" "$NANOS_REPOS_DIR/dotfiles/.doom.d" "$HOME/.doom.d"
     asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
     asklinksudo "/etc/thinkfan.conf" "$NANOS_REPOS_DIR/dotfiles/etc/thinkfan.conf" "/etc/thinkfan.conf"
     asklinksudo "awesome/rc.lua" "$NANOS_REPOS_DIR/dotfiles/etc/xdg/awesome/rc.lua" "/etc/xdg/awesome/rc.lua"
     mkdir -p $HOME/.config/z/
     source $HOME/.profile
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_symlinks $@
 #+end_src
 
 ** tmux_setup
-#+begin_src sh :tangle tmux_setup
+#+begin_src sh :tangle tmux_setup :tangle-mode (identity #o755)
 #!/bin/bash
 # tmux_setup: Installs tmux plugin manager
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1750,10 +1820,11 @@ tmux_setup() {
         git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tmux_setup $@
 #+end_src
 
 ** findpkg
-#+begin_src sh :tangle findpkg
+#+begin_src sh :tangle findpkg :tangle-mode (identity #o755)
 #!/bin/sh
 # FINDPKG: Attempts to find a package using available package managers
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1787,10 +1858,11 @@ findpkg() {
         echo "`tput setaf 1`Could not find any valid package managers`tput sgr0`"
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || findpkg $@
 #+end_src
 
 ** detect_os
-#+begin_src sh :tangle detect_os
+#+begin_src sh :tangle detect_os :tangle-mode (identity #o755)
 #!/bin/bash
 # detect_os: Attempts to detect the current operating system
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1846,10 +1918,11 @@ detect_os() {
         ;;
     esac
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || detect_os $@
 #+end_src
 
 ** askclone
-#+begin_src sh :tangle askclone
+#+begin_src sh :tangle askclone :tangle-mode (identity #o755)
 #!/bin/bash
 # askclone: promts the user to clone a git repository
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1878,10 +1951,11 @@ askclone() {
         git clone --recurse-submodules $2
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || askclone $@
 #+end_src
 
 ** asklink
-#+begin_src sh :tangle asklink
+#+begin_src sh :tangle asklink :tangle-mode (identity #o755)
 #!/bin/bash
 # asklink: prompts the user to create symlink if not already created
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1903,18 +1977,22 @@ askclone() {
 
 
 asklink() {
-    if [ "$(readlink -- $3)" = $2 ]; then
+    echo "$1"
+    echo "$2"
+    echo "$3"
+    if [ "$(readlink -- $3)" = "$2" ]; then
         echo "${green}$1${reset} already linked correctly"
-    elif ask "Link ${magenta}$1${reset}"; then
+    elif ask "Link ${magenta}${1}${reset}"; then
         #Create dir if not exist
         mkdir -p "$(dirname "${3}")"
         trylink "$2" "$3"
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || asklink $@
 #+end_src
 
 ** asklinkrecursive
-#+begin_src sh :tangle asklinkrecursive
+#+begin_src sh :tangle asklinkrecursive :tangle-mode (identity #o755)
 #!/bin/bash
 # asklinkrecursive: Creates symlinks for all nested dirs
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -1936,39 +2014,40 @@ asklink() {
 
 
 #This is not actually recursive lol
-askrecursivelinkdir() {
+asklinkrecursive() {
     for f in $(find "$2" -type f | sed "s|$2/*||"); do
         if [ "$(readlink -- $3/$f)" != "$2/$f" ]; then
             if ask "Recursively Link $1"; then
-            #Create dir if not exist
-            mkdir -p "$3"
-            for dir in $(find "$2" -type d | sed "s|$2||"); do
-                if [ ! -d "$3/$dir" ]; then
-                echo "Creating directory $3/$dir"
-                #Create child dirs if not exist
-                mkdir -p "$3/$dir"
-                fi
-            done
-            for file in $(find "$2" -type f | sed "s|$2/*||"); do
-                if [ "$(readlink -- $3/$file)" = "$2/$file" ]; then
-                    echo "${green}$1${reset} already linked correctly"
-                    continue
-                elif [ ! -z "$3/$file" ]; then
-                    trylink "$2/$file" "$3/$file"
-                else
-                    echo "File does not exist"
-                fi
-            done
+                #Create dir if not exist
+                mkdir -p "$3"
+                for dir in $(find "$2" -type d | sed "s|$2||"); do
+                    if [ ! -d "$3/$dir" ]; then
+                        echo "Creating directory $3/$dir"
+                        #Create child dirs if not exist
+                        mkdir -p "$3/$dir"
+                    fi
+                done
+                for file in $(find "$2" -type f | sed "s|$2/*||"); do
+                    if [ "$(readlink -- $3/$file)" = "$2/$file" ]; then
+                        echo "${green}$1${reset} already linked correctly"
+                        continue
+                    elif [ ! -z "$3/$file" ]; then
+                        trylink "$2/$file" "$3/$file"
+                    else
+                        echo "File does not exist"
+                    fi
+                done
+            fi
+	        return
 	    fi
-	    return
-	fi
     done
     echo "${green}$1${reset} already linked correctly"
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || asklinkrecursive $@
 #+end_src
 
 ** asklinksudo
-#+begin_src sh :tangle asklinksudo
+#+begin_src sh :tangle asklinksudo :tangle-mode (identity #o755)
 #!/bin/bash
 # asklinksudo: prompts user to create a symlink which requires sudo
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -2001,10 +2080,11 @@ asklinksudo() {
         sudo ln -sf "$2" "$3"
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || asklinksudo $@
 #+end_src
 
 ** arch_pkg_setup
-#+begin_src sh :tangle arch_pkg_setup
+#+begin_src sh :tangle arch_pkg_setup :tangle-mode (identity #o755)
 #!/bin/bash
 # arch_pkg_setup: Sets up packages on an arch system
 # Author: Nan0Scho1ar (Christopher Mackinga)
@@ -2029,8 +2109,10 @@ arch_pkg_setup() {
     sudo pacman -Sy
     ### Pacman
     trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy \
-        youtube-dl mpv youtube-viewer zathura yay vim neovim nodejs yarn \
-        ttf-jetbrains-mono alacritty emacs python-neovim unzip xsel bspwm sxhkd polybar
+        youtube-dl mpv youtube-viewer zathura yay vim nodejs yarn  ttf-jetbrains-mono \
+        alacritty emacs python-neovim unzip xsel bspwm sxhkd polybar net-tools nextcloud-client \
+        dmenu nitrogen github-cli net-tools screenkey xournalpp peek inkscape gimp entr
+
     if ask "Install doom emacs"; then
         git clone --depth 1 https://github.com/hlissner/doom-emacs ~/.emacs.d
         ~/.emacs.d/bin/doom install
@@ -2059,23 +2141,26 @@ arch_pkg_setup() {
         cd $NANOS_REPOS_DIR
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || arch_pkg_setup $@
 #+end_src
 
 ** arch_vm_setup
-#+begin_src sh :tangle arch_vm_setup
+#+begin_src sh :tangle arch_vm_setup :tangle-mode (identity #o755)
 #!/bin/sh
 ### Basic Arch VM install script
 
 read -p "Enter the hostname: " MYHOSTNAME
 timedatectl set-ntp true
-echo -e "g\nn\n\n\n+1M\nt\n4\nn\n\n\n+4G\nt\n2\n19\nn\n\n\n\np\nw\n" | fdisk /dev/sda
-mkfs.ext4 /dev/sda3
-mkswap /dev/sda2
-mount /dev/sda3 /mnt
-swapon /dev/sda2
+echo -e "g\nn\n\n\n+300M\nt\n1\nn\n\n\n+4G\nt\n2\n19\nn\n\n\n\np\nw\n" | fdisk /dev/vda
+mkfs.ext4 /dev/vda3
+mkswap /dev/vda2
+mount /dev/vda3 /mnt
+mkdir /mnt/boot
+mount /dev/vda1 /mnt/boot
+swapon /dev/vda2
 pacstrap /mnt base linux linux-firmware vi
 genfstab -U /mnt >> /mnt/etc/fstab
-cat << EOF |  arch-chroot /mnt
+cat << EOF | arch-chroot /mnt
 ln -sf /usr/share/zoneinfo/Australia/Brisbane /etc/localtime
 hwclock --systohc
 sed -i "s/#\(en_US.UTF-8 UTF-8\)/\1/;s/#\(en_AU.UTF-8 UTF-8\)/\1/" /etc/locale.gen
@@ -2084,15 +2169,14 @@ echo "LANG=en_US.UTF-8" > /etc/locale.conf
 echo "$MYHOSTNAME" > /etc/hostname
 echo -e "127.0.0.1   localhost\n::1     localhost\n127.0.1.1   $MYHOSTNAME.localdomain  $MYHOSTNAME" >> /etc/hosts
 pacman -Sy --noconfirm grub
-grub-install --target=i386-pc /dev/sda
+grub-install --target=i386-pc /dev/vda
 grub-mkconfig -o /boot/grub/grub.cfg
 EOF
 echo "Run passwd to set root password then exit and reboot"
-arch-chroot /mnt
-#+end_src
+arch-chroot /mnt#+end_src
 
 * pfetch
-#+begin_src sh :tangle pfetch
+#+begin_src sh :tangle pfetch :tangle-mode (identity #o755)
 #!/bin/sh
 #
 # pfetch - Simple POSIX sh fetch script.
@@ -3867,7 +3951,7 @@ main() {
 main "$@"
 #+end_src
 * z.sh
-#+begin_src sh :tangle z.sh
+#+begin_src sh :tangle z.sh :tangle-mode (identity #o755)
 #!/bin/sh
 # Z: Jump around easily
 # Created: 6/12/2020
@@ -4138,3 +4222,4 @@ z() {
     fi
 }
 #+end_src
+

@@ -30,3 +30,4 @@ tryaurinstall() {
         echo "${red}Installing $pkg${reset}" && yay -S $pkg;
     done
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tryaurinstall $@

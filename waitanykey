@@ -19,4 +19,4 @@
 
 
 wait_any_key() { read -n 1 -s -r -p "Press any key to continue"; }
-[[ "${BASH_SOURCE[0]}" != "${0}" ]] || wait_any_key
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || wait_any_key $@

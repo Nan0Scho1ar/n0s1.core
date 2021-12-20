@@ -35,3 +35,4 @@ setup_ssh() {
         && sh brave "https://bitbucket.org/account/settings/ssh-keys/" "https://github.com/settings/keys"
     wait_any_key
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_ssh $@

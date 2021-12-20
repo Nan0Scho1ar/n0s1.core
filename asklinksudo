@@ -30,3 +30,4 @@ asklinksudo() {
         sudo ln -sf "$2" "$3"
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || asklinksudo $@

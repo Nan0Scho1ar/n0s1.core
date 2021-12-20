@@ -30,3 +30,4 @@ setup_repos() {
     askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
     cd $HOME
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_repos $@

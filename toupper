@@ -4,4 +4,4 @@
 # Created: 8/12/2020
 # License: MIT License
 toupper() { sed 's/./\U&/g' /dev/stdin; }
-[[ "${BASH_SOURCE[0]}" != "${0}" ]] || toupper
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || toupper $@

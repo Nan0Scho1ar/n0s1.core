@@ -31,3 +31,4 @@ findpkg() {
         echo "`tput setaf 1`Could not find any valid package managers`tput sgr0`"
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || findpkg $@

@@ -53,3 +53,4 @@ detect_os() {
         ;;
     esac
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || detect_os $@

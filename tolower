@@ -4,4 +4,4 @@
 # Created: 8/12/2020
 # License: MIT License
 tolower() { sed 's/./\L&/g' /dev/stdin; }
-[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tolower
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tolower $@

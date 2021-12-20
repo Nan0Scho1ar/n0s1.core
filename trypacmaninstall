@@ -28,3 +28,4 @@ trypacmaninstall() {
         echo "${red}Installing $pkg${reset}" && sudo pacman -S --noconfirm $pkg;
     done
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || trypacmaninstall $@

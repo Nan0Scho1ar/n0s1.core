@@ -29,3 +29,4 @@ trylink() {
     echo "Linking ${magenta}$2${reset}"
     ln -sf "$1" "$2"
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || trylink $@

@@ -46,3 +46,4 @@ vim_setup() {
         fi
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || vim_setup $@

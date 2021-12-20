@@ -19,32 +19,33 @@
 
 
 #This is not actually recursive lol
-askrecursivelinkdir() {
+asklinkrecursive() {
     for f in $(find "$2" -type f | sed "s|$2/*||"); do
         if [ "$(readlink -- $3/$f)" != "$2/$f" ]; then
             if ask "Recursively Link $1"; then
-            #Create dir if not exist
-            mkdir -p "$3"
-            for dir in $(find "$2" -type d | sed "s|$2||"); do
-                if [ ! -d "$3/$dir" ]; then
-                echo "Creating directory $3/$dir"
-                #Create child dirs if not exist
-                mkdir -p "$3/$dir"
-                fi
-            done
-            for file in $(find "$2" -type f | sed "s|$2/*||"); do
-                if [ "$(readlink -- $3/$file)" = "$2/$file" ]; then
-                    echo "${green}$1${reset} already linked correctly"
-                    continue
-                elif [ ! -z "$3/$file" ]; then
-                    trylink "$2/$file" "$3/$file"
-                else
-                    echo "File does not exist"
-                fi
-            done
+                #Create dir if not exist
+                mkdir -p "$3"
+                for dir in $(find "$2" -type d | sed "s|$2||"); do
+                    if [ ! -d "$3/$dir" ]; then
+                        echo "Creating directory $3/$dir"
+                        #Create child dirs if not exist
+                        mkdir -p "$3/$dir"
+                    fi
+                done
+                for file in $(find "$2" -type f | sed "s|$2/*||"); do
+                    if [ "$(readlink -- $3/$file)" = "$2/$file" ]; then
+                        echo "${green}$1${reset} already linked correctly"
+                        continue
+                    elif [ ! -z "$3/$file" ]; then
+                        trylink "$2/$file" "$3/$file"
+                    else
+                        echo "File does not exist"
+                    fi
+                done
+            fi
+	        return
 	    fi
-	    return
-	fi
     done
     echo "${green}$1${reset} already linked correctly"
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || asklinkrecursive $@

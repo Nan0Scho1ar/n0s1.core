@@ -19,11 +19,15 @@
 
 
 asklink() {
-    if [ "$(readlink -- $3)" = $2 ]; then
+    echo "$1"
+    echo "$2"
+    echo "$3"
+    if [ "$(readlink -- $3)" = "$2" ]; then
         echo "${green}$1${reset} already linked correctly"
-    elif ask "Link ${magenta}$1${reset}"; then
+    elif ask "Link ${magenta}${1}${reset}"; then
         #Create dir if not exist
         mkdir -p "$(dirname "${3}")"
         trylink "$2" "$3"
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || asklink $@

@@ -5,4 +5,4 @@
 # License: MIT License
 
 catenate()  { cat <(echo -n "$1") - <(echo -n "$2"); }
-[[ "${BASH_SOURCE[0]}" != "${0}" ]] || catenate
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || catenate $@

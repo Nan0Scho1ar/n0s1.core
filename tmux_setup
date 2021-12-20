@@ -25,3 +25,4 @@ tmux_setup() {
         git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tmux_setup $@

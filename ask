@@ -26,3 +26,4 @@ ask() {
         [[ $REPLY =~ ^[Nn]$ ]] && return 1
     done
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || ask $@

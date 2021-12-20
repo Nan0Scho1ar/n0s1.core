@@ -27,11 +27,12 @@ setup_symlinks() {
     asklink ".xprofile" "$NANOS_REPOS_DIR/dotfiles/.xprofile" "$HOME/.xprofile"
     asklink ".zshenv" "$NANOS_REPOS_DIR/dotfiles/.zshenv" "$HOME/.zshenv"
     asklink ".tmux.conf" "$NANOS_REPOS_DIR/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
-    askrecursivelinkdir ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
-    askrecursivelinkdir ".doom.d" "$NANOS_REPOS_DIR/dotfiles/.doom.d" "$HOME/.doom.d"
+    asklinkrecursive ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
+    asklinkrecursive ".doom.d" "$NANOS_REPOS_DIR/dotfiles/.doom.d" "$HOME/.doom.d"
     asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
     asklinksudo "/etc/thinkfan.conf" "$NANOS_REPOS_DIR/dotfiles/etc/thinkfan.conf" "/etc/thinkfan.conf"
     asklinksudo "awesome/rc.lua" "$NANOS_REPOS_DIR/dotfiles/etc/xdg/awesome/rc.lua" "/etc/xdg/awesome/rc.lua"
     mkdir -p $HOME/.config/z/
     source $HOME/.profile
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_symlinks $@

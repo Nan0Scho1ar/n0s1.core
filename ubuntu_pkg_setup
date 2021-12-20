@@ -47,3 +47,4 @@ ubuntu_pkg_setup() {
     fi
     ###TODO Install Rider
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || ubuntu_pkg_setup $@

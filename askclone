@@ -26,3 +26,4 @@ askclone() {
         git clone --recurse-submodules $2
     fi
 }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || askclone $@
