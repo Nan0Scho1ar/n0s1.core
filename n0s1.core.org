@@ -2111,7 +2111,7 @@ arch_pkg_setup() {
     trypacmaninstall --prompt keychain fd ripgrep fzf bat tmux neovim flameshot synergy \
         youtube-dl mpv youtube-viewer zathura yay vim nodejs yarn  ttf-jetbrains-mono \
         alacritty emacs python-neovim unzip xsel bspwm sxhkd polybar net-tools nextcloud-client \
-        dmenu nitrogen github-cli net-tools screenkey xournalpp peek inkscape gimp entr
+        dmenu nitrogen github-cli net-tools screenkey xournalpp peek inkscape gimp entr tidy stylelint python-isort python-pipenv sbcl
 
     if ask "Install doom emacs"; then
         git clone --depth 1 https://github.com/hlissner/doom-emacs ~/.emacs.d
@@ -2125,6 +2125,7 @@ arch_pkg_setup() {
         tryaurinstall --prompt texlive-most
         tryaurinstall --prompt postman
         tryaurinstall --prompt rider
+        tryaurinstall --prompt js-beautify
     fi
     if ask "Install rust toolchain"; then
         trypacmaninstall rustup
