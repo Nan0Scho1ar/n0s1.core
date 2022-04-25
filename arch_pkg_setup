@@ -22,19 +22,15 @@ arch_pkg_setup() {
     sudo pacman -Sy
     ### Pacman
      #trypacmaninstall --prompt
-     trypacmaninstall keychain fd ripgrep fzf bat tmux neovim flameshot \
-         synergy youtube-dl mpv youtube-viewer zathura zathura-pdf-poppler yay \
-         vim nodejs yarn ttf-jetbrains-mono alacritty emacs unzip bspwm sxhkd \
-         polybar net-tools base-devel cmake entr racket elixir brave-browser \
-         python-black python-pyflakes python-isort python-pipenv python-pytest python-rednose \
-         shellcheck \
-         tidy stylelint \
-         xclip xdotool xorg-xprop xorg-xwininfo xsel bluez-utils bluez languagetool \
-         julia aspell aspell-en \
-         keychain fd ripgrep fzf bat tmux neovim flameshot synergy \
-         youtube-dl mpv youtube-viewer zathura yay vim nodejs yarn  ttf-jetbrains-mono \
-         alacritty emacs python-neovim unzip xsel bspwm sxhkd polybar net-tools nextcloud-client \
-         dmenu nitrogen github-cli net-tools screenkey xournalpp peek inkscape gimp entr tidy stylelint python-isort python-pipenv sbcl
+    trypacmaninstall \
+    alacritty aspell aspell-en base-devel bat bluez bluez-utils \
+    brave-browser bspwm cmake dmenu elixir emacs entr fd flameshot fzf gimp \
+    github-cli inkscape julia keychain languagetool mpv neovim net-tools \
+    nextcloud-client nitrogen nodejs peek polybar python-black python-isort \
+    python-neovim python-pipenv python-pyflakes python-pytest python-rednose \
+    racket ripgrep sbcl screenkey shellcheck stylelint sxhkd synergy tidy \
+    tmux ttf-jetbrains-mono unzip vim xclip xdotool xorg-xprop xorg-xwininfo \
+    xournalpp xsel yarn yay youtube-dl youtube-viewer zathura zathura-pdf-poppler \
 
     if ask "Install doom emacs"; then
         git clone --depth 1 https://github.com/hlissner/doom-emacs ~/.emacs.d
