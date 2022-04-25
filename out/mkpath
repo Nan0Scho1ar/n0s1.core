@@ -6,3 +6,12 @@
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
 
 find "$1" -type d | grep -v "\.git" | tr '\n' ':' | sed "s/:$//"
+
+#!/bin/bash
+# mkpath: build a path variable using a dir and all sub dirs
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Wed 17 Nov 2021 16:32:14 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+
+find "$1" -type d | grep -v "\.git" | tr '\n' ':' | sed "s/:$//"
