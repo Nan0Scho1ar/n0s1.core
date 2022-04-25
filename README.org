@@ -209,7 +209,7 @@ else
 fi
 #+end_src
 
-** check_root
+** check-root
 #+begin_src sh :tangle out/check_root :tangle-mode (identity #o755)
 #!/bin/sh
 # CHECK_ROOT: Throws an error if the current user is not root
@@ -222,15 +222,23 @@ check_root () { [[ $EUID - 0 ]] && echo "Error this must be run as root"  && ret
 
 ** colours
 #+begin_src sh :tangle out/colours :tangle-mode (identity #o755)
-green=`tput setaf 2`
-red=`tput setaf 1`
-yellow=`tput setaf 3`
-blue=`tput setaf 4`
-magenta=`tput setaf 5`
-cyan=`tput setaf 6`
-white=`tput setaf 7`
-blink=`tput blink`
-reset=`tput sgr0`
+if [ -t 1 ] && command -v tput > /dev/null; then
+    # see if it supports colors
+    ncolors=$(tput colors)
+    if [ -n "$ncolors" ] && [ $ncolors -ge 8 ]; then
+        export bold="$(tput bold       || echo)"
+        export blink="$(tput blink     || echo)"
+        export reset="$(tput sgr0      || echo)"
+        export black="$(tput setaf 0   || echo)"
+        export red="$(tput setaf 1     || echo)"
+        export green="$(tput setaf 2   || echo)"
+        export yellow="$(tput setaf 3  || echo)"
+        export blue="$(tput setaf 4    || echo)"
+        export magenta="$(tput setaf 5 || echo)"
+        export cyan="$(tput setaf 6    || echo)"
+        export white="$(tput setaf 7   || echo)"
+    fi
+fi
 #+end_src
 
 ** discordwebhooks
@@ -286,7 +294,7 @@ echo "'$1' is not a valid file"
 fi
 #+end_src
 
-** org_header
+** org-header
 #+begin_src sh :tangle out/org_header :tangle-mode (identity #o755)
 #!/bin/bash
 # create a header or an oeg file to be exported to html
@@ -783,7 +791,7 @@ fi
 # Bish
 #+end_src
 
-** org_ingest
+** org-ingest
 #+begin_src sh :tangle out/org_ingest :tangle-mode (identity #o755)
 #!/bin/bash
 # Ingest a directory full of files to tangled script blocks in a org file.
@@ -1216,23 +1224,7 @@ END {
 # Script to init arch/ubuntu/windows_10 systems to nanOS
 #{{{ Colours
 # Add colour vars
-if [ -t 1 ] && command -v tput > /dev/null; then
-    # see if it supports colors
-    ncolors=$(tput colors)
-    if [ -n "$ncolors" ] && [ $ncolors -ge 8 ]; then
-        bold="$(tput bold       || echo)"
-        blink="$(tput blink     || echo)"
-        reset="$(tput sgr0      || echo)"
-        black="$(tput setaf 0   || echo)"
-        red="$(tput setaf 1     || echo)"
-        green="$(tput setaf 2   || echo)"
-        yellow="$(tput setaf 3  || echo)"
-        blue="$(tput setaf 4    || echo)"
-        magenta="$(tput setaf 5 || echo)"
-        cyan="$(tput setaf 6    || echo)"
-        white="$(tput setaf 7   || echo)"
-    fi
-fi
+./colours
 #}}}
 #{{{ trypacmaninstall()
 #}}}
@@ -1315,7 +1307,7 @@ tmux_setup
 #doom emacs
 #+end_src
 
-** vim_setup
+** vim-setup
 #+begin_src sh :tangle out/vim_setup :tangle-mode (identity #o755)
 #!/bin/bash
 # vim_setup: Install vimplug and plugins
@@ -1446,7 +1438,7 @@ trypacmaninstall() {
 [[ "${BASH_SOURCE[0]}" != "${0}" ]] || trypacmaninstall $@
 #+end_src
 
-** ubuntu_pkg_setup
+** ubuntu-pkg-setup
 #+begin_src sh :tangle out/ubuntu_pkg_setup :tangle-mode (identity #o755)
 #!/bin/bash
 # ubuntu_pkg_setup: Script to install ubuntu packages
@@ -1488,7 +1480,7 @@ ubuntu_pkg_setup() {
 [[ "${BASH_SOURCE[0]}" != "${0}" ]] || ubuntu_pkg_setup $@
 #+end_src
 
-** setup_git
+** setup-git
 #+begin_src sh :tangle out/setup_git :tangle-mode (identity #o755)
 #!/bin/bash
 # setup_git: setup git settings
@@ -1515,7 +1507,7 @@ setup_git() {
 [[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_git $@
 #+end_src
 
-** setup_repos
+** setup-repos
 #+begin_src sh :tangle out/setup_repos :tangle-mode (identity #o755)
 #!/bin/bash
 # setup_repos: sets up repos for a system
@@ -1540,7 +1532,7 @@ setup_repos() {
 [[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_repos $@
 #+end_src
 
-** setup_ssh
+** setup-ssh
 #+begin_src sh :tangle out/setup_ssh :tangle-mode (identity #o755)
 #!/bin/bash
 # setup_ssh: Propmts user to create new ssh keys if none exist
@@ -1570,7 +1562,7 @@ setup_ssh() {
 [[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_ssh $@
 #+end_src
 
-** setup_symlinks
+** setup-symlinks
 #+begin_src sh :tangle out/setup_symlinks :tangle-mode (identity #o755)
 #!/bin/bash
 # setup_symlinks: Sets up symlinks for a system
@@ -1600,7 +1592,7 @@ setup_symlinks() {
 [[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_symlinks $@
 #+end_src
 
-** tmux_setup
+** tmux-setup
 #+begin_src sh :tangle out/tmux_setup :tangle-mode (identity #o755)
 #!/bin/bash
 # tmux_setup: Installs tmux plugin manager
@@ -1658,7 +1650,7 @@ findpkg() {
 [[ "${BASH_SOURCE[0]}" != "${0}" ]] || findpkg $@
 #+end_src
 
-** detect_os
+** detect-os
 #+begin_src sh :tangle out/detect_os :tangle-mode (identity #o755)
 #!/bin/bash
 # detect_os: Attempts to detect the current operating system
@@ -1819,7 +1811,7 @@ asklinksudo() {
 [[ "${BASH_SOURCE[0]}" != "${0}" ]] || asklinksudo $@
 #+end_src
 
-** arch_pkg_setup
+** arch-pkg-setup
 #+begin_src sh :tangle out/arch_pkg_setup :tangle-mode (identity #o755)
 #!/bin/bash
 # arch_pkg_setup: Sets up packages on an arch system
@@ -1876,7 +1868,7 @@ arch_pkg_setup() {
 [[ "${BASH_SOURCE[0]}" != "${0}" ]] || arch_pkg_setup $@
 #+end_src
 
-** arch_vm_setup
+** arch-vm-setup
 #+begin_src sh :tangle out/arch_vm_setup :tangle-mode (identity #o755)
 #!/bin/sh
 ### Basic Arch VM install script
