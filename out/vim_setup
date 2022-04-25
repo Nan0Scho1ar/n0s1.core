@@ -1,0 +1,49 @@
+#!/bin/bash
+# vim_setup: Install vimplug and plugins
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:40:42 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+vim_setup() {
+    #Setup vim/nvim
+    if [ -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ] && [ -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
+        echo "${green}vimplug already installed${reset}"
+    elif ask "Install vim/nvim plugins"; then
+        if [ $NANOS_NAME = "linux" ]; then
+            if [ ! -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ]; then
+                echo "$XDG_DATA_HOME/vim/autoload/plug.vim not found. Downloading..."
+                curl -fLo $HOME/.vim/autoload/plug.vim --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+                vim -E -s +PlugInstall +visual +qall
+            fi
+
+
+            if [ ! -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
+                echo "$HOME/.config/nvim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
+                curl -fLo "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+            fi
+
+            if [ ! -f "$XDG_DATA_HOME/n0s1vim/site/autoload/plug.vim" ]; then
+                echo "$HOME/.config/n0s1vim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
+                curl -fLo "$XDG_DATA_HOME/n0s1vim/site/autoload/plug.vim" --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+            fi
+        fi
+    fi
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || vim_setup $@

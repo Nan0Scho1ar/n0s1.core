@@ -1,0 +1,51 @@
+#!/bin/bash
+# asklinkrecursive: Creates symlinks for all nested dirs
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:33:23 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+#This is not actually recursive lol
+asklinkrecursive() {
+    for f in $(find "$2" -type f | sed "s|$2/*||"); do
+        if [ "$(readlink -- $3/$f)" != "$2/$f" ]; then
+            if ask "Recursively Link $1"; then
+                #Create dir if not exist
+                mkdir -p "$3"
+                for dir in $(find "$2" -type d | sed "s|$2||"); do
+                    if [ ! -d "$3/$dir" ]; then
+                        echo "Creating directory $3/$dir"
+                        #Create child dirs if not exist
+                        mkdir -p "$3/$dir"
+                    fi
+                done
+                for file in $(find "$2" -type f | sed "s|$2/*||"); do
+                    if [ "$(readlink -- $3/$file)" = "$2/$file" ]; then
+                        echo "${green}$1${reset} already linked correctly"
+                        continue
+                    elif [ ! -z "$3/$file" ]; then
+                        trylink "$2/$file" "$3/$file"
+                    else
+                        echo "File does not exist"
+                    fi
+                done
+            fi
+	        return
+	    fi
+    done
+    echo "${green}$1${reset} already linked correctly"
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || asklinkrecursive $@

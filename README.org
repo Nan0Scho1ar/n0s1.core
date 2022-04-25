@@ -1,0 +1,2134 @@
+#+auto_tangle: t
+* n0s1.core Webserver
+** wsgi.py
+#+begin_src python :tangle out/wsgi.py :tangle-mode (identity #o755)
+from app import app
+
+if __name__ == "__main__":
+        app.run()
+#+end_src
+
+** app.py
+#+begin_src python :tangle out/app.py :tangle-mode (identity #o755)
+#!/bin/python
+# APP.PY: Flask server to serve html or plain text depending on client's useragent string
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 21/01/2021
+# License: MIT License
+# Requires flask, pygments, markdown
+
+import sys
+import os
+import markdown
+import markdown.extensions.fenced_code
+import markdown.extensions.codehilite
+from flask import Flask, request, make_response, render_template, abort
+from pygments.formatters import HtmlFormatter
+
+PLAIN_TEXT_AGENTS = [ "curl", "httpie", "lwp-request", "wget", "python-requests", "openbsd ftp", "powershell", "fetch" ]
+INDEX_PATH = "./README.md"
+app = Flask(__name__)
+
+def to_html(lines):
+    md = markdown.markdown(lines, extensions=["fenced_code", "codehilite"])
+    formatter = HtmlFormatter(style="monokai",full=True,cssclass="codehilite")
+    css = "\nbody { background-color: #33363B; color: #CCCCCC;}\ntd.linenos pre { background-color: #AAAAAA; }"
+    return "<style>" + formatter.get_style_defs() + css + "</style>" + md
+
+def get_file_path(path, is_man):
+    if is_man:
+        if path == None:
+            return "./man/README.md"
+        elif os.path.isfile("./man/" + path):
+            return "./man/" + path
+        elif os.path.isfile("./man/" + path + ".md"):
+            return "./man/" + path + ".md"
+    else:
+        if path == None:
+            return INDEX_PATH
+        elif os.path.isfile("./" + path):
+            return "./" + path
+        elif os.path.isfile("./" + path + ".sh"):
+            return "./" + path + ".sh"
+    return None
+
+def try_get_lines(file_path):
+    if file_path == None:
+        return ""
+    with open(file_path) as f:
+        lines = f.read()
+    return lines
+
+def get_content(path, request, is_man, is_raw):
+    file_path = get_file_path(path, is_man)
+    lines = try_get_lines(file_path)
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if any([x in user_agent for x in PLAIN_TEXT_AGENTS]):
+        return "Error: file not found" if file_path == None else lines
+    if file_path == None:
+        abort(404)
+    if is_raw:
+        resp = make_response(lines)
+        resp.mimetype = 'text/plain'
+        return resp
+    if file_path == INDEX_PATH or is_man:
+        return to_html(lines)
+    #This must be the base url so display the man above the file
+    man_path = get_file_path(path, True)
+    man_lines = try_get_lines(man_path)
+    return to_html(man_lines + "\n##CODE:\n```\n" + lines + "\n```")
+
+@app.route("/")
+@app.route("/<path>")
+def get_file(path=None):
+    return get_content(path, request, False, False)
+
+@app.route("/man/<path>")
+def get_man(path=None):
+    return get_content(path, request, True, False)
+
+@app.route("/raw/<path>")
+def get_raw(path=None):
+    return get_content(path, request, False, True)
+
+@app.route("/raw/man/<path>")
+def get_raw_man(path=None):
+    return get_content(path, request, True, True)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0')
+#+end_src
+
+* Scripts
+** Bookmarks
+*** bm
+#+begin_src sh :tangle out/bm :tangle-mode (identity #o755)
+#!/bin/sh
+# BM: Bookmarks
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 17/10/2020
+# License: GPL v3
+
+add() { read -p "Enter key: " key; read -p "Enter value: " val; echo "$key~|~$val" >> $1; }
+
+delete() {
+    if [ -z $2 ]; then
+        sed -i $(cat -n $1 | fzy | sed "s/\(\s*[0-9]*\).*/\1dq/") $1
+    else
+        idx=$(grep -n "$1~|~.*" $2 | head -n1 | sed "s/^\([0-9]*\):.*/\1/")
+        sed -i "${idx}d" $2
+    fi
+}
+get() { sed -n "s/^$1~|~\(.*\)/\1/p" $2 | head -n1; }
+readval() { cat "$1" | fzy | sed "s/.*~|~//"; }
+
+mkdir -p ~/.config/bookmarks/;
+if [ -z $1 ]; then readval $(ls $HOME/.config/bookmarks/*.bm | fzy);
+elif [ "$1" = "add" ]; then add "$HOME/.config/bookmarks/$2.bm";
+elif [ "$1" = "rm" ]; then delete "$2" "$HOME/.config/bookmarks/$3.bm";
+elif [ "$1" = "get" ]; then get "$2" "$HOME/.config/bookmarks/$3.bm";
+elif [ "$1" = "list" ]; then cat "$HOME/.config/bookmarks/$2.bm" | sed "s/~|~/\t/" | column -ts $'\t';
+else readval "$HOME/.config/bookmarks/$1.bm";
+fi
+#+end_src
+
+*** cb
+#+begin_src sh :tangle out/cb :tangle-mode (identity #o755)
+#!/bin/sh
+# CB: cd bookmarks
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 31/08/2021
+# License: GPL v3
+
+cb() {
+    #TODO Prompt for missing args
+    [ -z $1 ] && bm list dirs
+    case "$1" in
+        add) echo -e "$2\n$(pwd)" | bm add dirs;;
+        rm) bm rm "$2" dirs;;
+        list) bm list dirs;;
+        reload) source "$NREPOS/n0s1.core/cb";;
+        *) cd $(bm get "$1" dirs);;
+    esac
+}
+#+end_src
+
+*** ef
+#+begin_src sh :tangle out/ef :tangle-mode (identity #o755)
+#!/bin/sh
+# EF: Edit bookmarked files
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 31/08/2021
+# License: GPL v3
+
+ef() {
+    #TODO Prompt for missing args
+    case "$1" in
+        add) echo -e "$2\n$(pwd)/$3" | bm add editfiles;;
+        rm) bm rm "$2" editfiles;;
+        list) bm list editfiles;;
+        reload) source "$NREPOS/n0s1.core/ef" && echo "Reloaded ef";;
+        *) vim $(bm get "$1" editfiles);;
+    esac
+}
+#+end_src
+
+** ask
+#+begin_src sh :tangle out/ask :tangle-mode (identity #o755)
+#!/bin/bash
+# ask: Promts the user to answer a yes/no question.
+# Returns after a single char is entered without hitting return.
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:29:17 AEST
+# License: GPL v3
+
+ask() {
+    while true; do
+    read -p "${1} ${yellow}y/n${reset} " -sn1
+        echo
+        [[ $REPLY =~ ^[Yy]$ ]] && return 0
+        [[ $REPLY =~ ^[Nn]$ ]] && return 1
+    done
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || ask $@
+#+end_src
+
+** awkp
+#+begin_src sh :tangle out/awkp :tangle-mode (identity #o755)
+#!/bin/sh
+#AWKP: awk print colums
+#Author: Nan0Scho1ar (Christopher Mackinga)
+#License: GPLv3
+#Description: simplify printing specifig colums using awk
+
+if [[ $# -eq 0 ]]; then
+    column -t
+else
+    awk "{print $(echo "\$$@" | sed 's/ /"\t"$/g')}" | column -t
+fi
+#+end_src
+
+** check_root
+#+begin_src sh :tangle out/check_root :tangle-mode (identity #o755)
+#!/bin/sh
+# CHECK_ROOT: Throws an error if the current user is not root
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 07/11/2020
+# License: GPL v3
+
+check_root () { [[ $EUID - 0 ]] && echo "Error this must be run as root"  && return 1; }
+#+end_src
+
+** colours
+#+begin_src sh :tangle out/colours :tangle-mode (identity #o755)
+green=`tput setaf 2`
+red=`tput setaf 1`
+yellow=`tput setaf 3`
+blue=`tput setaf 4`
+magenta=`tput setaf 5`
+cyan=`tput setaf 6`
+white=`tput setaf 7`
+blink=`tput blink`
+reset=`tput sgr0`
+#+end_src
+
+** discordwebhooks
+#+begin_src sh :tangle out/discordwebhooks :tangle-mode (identity #o755)
+#!/bin/sh
+# DISCORD_WEBHOOKS: Tool for managing and messaging using discord webhooks
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 17/10/2020
+# License: GPL v3
+
+save() { read -p "Enter $1: " r1; read -p "Enter $2: " r2; echo "$r1|$r2" >> $3; }
+delete() { sed -i $(cat -n $1 | fzf --with-nth 2.. | awk '{print $1"d"}') $1; }
+
+mkdir -p ~/.config/discordwebhooks/;
+if [ -z $1 ]; then
+    IFS='|' read -r username avatar_url <<< $(cat $HOME/.config/discordwebhooks/users.bm | fzf)
+    IFS='|' read -r channel_name webhook_url <<< $(cat $HOME/.config/discordwebhooks/channels.bm | fzf)
+    echo "Enter message to post in $channel_name:"
+    while true; do
+        read -p "> " msg || exit 1
+        data="{\"username\": \"$username\", \"avatar_url\": \"$avatar_url\", \"content\": \"$msg\" }"
+        curl -X POST -H "Content-Type: application/json" -d "$data" $webhook_url
+    done
+elif [ "$1" = "adduser" ]; then save "username" "avatar url" "$HOME/.config/discordwebhooks/users.bm";
+elif [ "$1" = "addchannel" ]; then save "channel name" "webhook url" "$HOME/.config/discordwebhooks/channels.bm";
+elif [ "$1" = "deleteuser" ]; then delete "$HOME/.config/discordwebhooks/users.bm";
+elif [ "$1" = "deletechannel" ]; then delete "$HOME/.config/discordwebhooks/channels.bm";
+fi
+#+end_src
+
+** exprq
+#+begin_src sh :tangle out/exprq :tangle-mode (identity #o755)
+#!/bin/bash
+# exprx: syntactic sugar for expr to test if regex matches
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Fri 17 Sep 2021 14:48:03 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+
+exprq() { expr "$1" : "$2" 1>/dev/null; }
+#+end_src
+
+** fzy
+#+begin_src sh :tangle out/fzy :tangle-mode (identity #o755)
+#!/bin/bash
+# FZY: Command Line Fuzzy Finder
+# Created: 29/10/2020
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# License: GPL v3
+
+hideinput() { [ -t 0 ] && save_state=$(stty -g) && stty -echo -icanon time 0 min 0 && echo -ne "\e[?1049h\r" 1>&2; }
+cleanup() { [ -t 0 ] && stty "$save_state" < /dev/tty && echo -ne "\e[?1049l" 1>&2 && echo "$result"; }
+trap 'cleanup < /dev/tty' < /dev/tty EXIT
+trap 'hideinput < /dev/tty' CONT
+hideinput < /dev/tty
+
+input="$(< /dev/stdin)";
+height="$(tput lines)";
+inum=$(echo "$input" | wc -l);
+fnum=$inum;
+clearline=$(echo -e "\033[2K")
+valid='0-9a-zA-Z '
+str=""; regex=""; regex2=""; result="";
+row=1; col=1; cur=1; scrolling=1;
+while true;
+do
+    range="$row,$((row+height-3))p;$((row+height-3))q";
+    filtered=$(echo "$input" | grep ".*$regex" | sed -n $range 2>/dev/null | sed -e "s/^.*/  &/");
+    frange="$(echo "$filtered" | wc -l)";
+    curpos=$((frange-cur+1));
+    echo "$filtered" | cut -c$col- | grep -E --color=always "$regex2" | tac | sed -e $curpos"s/^  \(.*\)/> \1/;s/^.*/$clearline&/" 1>&2;
+    echo "$clearline  $fnum/$inum" 1>&2;
+    tput cnorm
+    [ $scrolling = 1 ] && read -r -sn200 -t 0.0001 junk < /dev/tty;
+    read -r -p "$clearline> $str" -sn1 < /dev/tty;
+    read -r -sn3 -t 0.001 k1 < /dev/tty;
+    REPLY+=$k1;
+    case "$REPLY" in
+        '')
+            result=$(echo "$filtered" | sed -n "${cur}s/  //p;${cur}q");
+            exit;
+            ;;
+        $'\e[C'|$'\e0C') col=$((col+1)) && scrolling=1 ;;
+        $'\e[D'|$'\e0D') [[ $col -gt 1 ]] && col=$((col-1)) && scrolling=1 ;;
+        $'\e[B'|$'\e0B') [[ $cur -ge 1 ]] && cur=$((cur-1)) && scrolling=1 ;;
+        $'\e[A'|$'\e0A') [[ $cur -le $fnum ]] && cur=$((cur+1)) && scrolling=1 ;;
+        $'\e[1~'|$'\e0H'|$'\e[H') row=1 ;;
+        $'\e[4~'|$'\e0F'|$'\e[F') row=$fnum ;;
+        *)
+            char=$(echo "$REPLY" | hexdump -c | tr -d '[:space:]');
+            if [[ $char = "0000000033\n0000002" ]]; then
+                exit 1;
+            elif [[ $char = "0000000177\n0000002" ]] && [[ ${#str} -gt 0 ]]; then
+                str="${str::-1}";
+                scrolling=1;
+            else
+                filtchar=$(echo "$REPLY" | hexdump -c | awk '{ print $2 }')
+                result="$filtchar"
+                if [[ "$filtchar" != "033" ]] && [[ "$filtchar" != "177" ]] && [[ ! "$REPLY"  =~ [^$valid] ]]; then
+                    str="$str$REPLY" && row=1;
+                    scrolling=0;
+                fi
+            fi
+            regex=$(echo "$str" | sed "s/\(.\)/\1.*/g");
+            regex2=$(echo "$str" | sed "s/\(.\)/\1|/g");
+            fnum=$(echo "$input" | grep -c ".*$regex");
+            ;;
+    esac
+    [[ $((frange-cur+1)) -lt 1 ]] && row=$((row+1)) && cur=$((cur-1));
+    [[ $cur -lt 1 ]] && row=$((row-1)) && cur=$((cur+1));
+    [[ $cur -gt $fnum ]] && cur=$fnum;
+    [[ $((row-fnum+frange)) -gt 1 ]] && row=$((row-1));
+    [[ $row -lt 1 ]] && row=1;
+    tput civis
+    tput cup 0 0
+    [[ $fnum -lt $height ]] && yes "$clearline" | sed "$((height-fnum-2))q" 1>&2;
+done
+#+end_src
+
+*** fzy_lite
+#+begin_src sh :tangle out/fzy_lite :tangle-mode (identity #o755)
+#!/bin/sh
+# FZY_Lite: 10 SLOC Command Line Fuzzy Finder
+# Copyright: Nan0Scho1ar (Christopher Mackinga) MIT License (29/10/2020)
+
+fzy_lite() {
+    str=""; input="$(< /dev/stdin)"; echo -e "\e[?1049h"; while true; do
+    filtered=$(echo "$input" | grep ".*$(echo "$str" | sed "s/\(.\)/\1.*/g")");
+    echo "$filtered"; read -p "> $str" -n 1 -s < /dev/tty;
+    char=$(echo $REPLY | hexdump -c | awk '{ print $2 }');
+    [[ $char = "\n" ]] && echo -e "\e[?1049l$filtered" && return 0
+    [[ $char = "177" ]] && [[ $str = "" ]] && echo -e "\e[?1049l" && return 1
+    [[ $char = "177" ]] && str="${str::-1}" || str="$str$REPLY";
+    yes '' | sed "$(tput lines)q"; done
+}
+#+end_src
+
+** A bit less
+*** hackless
+#+begin_src sh :tangle out/hackless :tangle-mode (identity #o755)
+#!/bin/sh
+# LESS: The hackable less
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 30/10/2020
+# License: MIT License
+
+hackless() {
+    lines="$(cat "$1" || cat /dev/stdin)"
+    row=1 && col=1 && regex="" &&
+    height="$(tput lines)" && cols=$(tput cols) &&
+    numln="$(echo "$lines" | wc -l)" &&
+    maxlen=$(echo "$lines" | awk '{ print length }' | sort -n | tail -1) &&
+    lastln="$([[ $numln -ge $height ]] && echo $((numln-height+2)) || echo 1)" &&
+    lastcol="$([[ $maxlen -ge $cols ]] && echo $((maxlen-cols+4)) || echo 1)" &&
+    lines="$lines$(echo; yes '~' | sed -n "1,${cols}p;${cols}q")" &&
+    echo -e "\e[?1049h" || return 1
+    while true; do
+        echo "$lines" | sed -n "$row,$((row+height-2))p;$((row+height-2))q" \
+            | cut -c $col-$((col+cols-1)) | grep --colour=always "^\|$regex";
+        [[ $row -eq $lastln ]] && cur="$(tput rev)END$(tput sgr0)" || cur=":"
+        read -rsn1 -p "$cur" < /dev/tty char && echo -e "$(tput el1)\r"
+        case $char in
+            'q') echo -e "\e[?1049l" && return;;
+            'k') [[ $row -gt 1 ]] && row=$((row-1));;
+            'j') [[ $row -lt $lastln ]] && row=$((row+1));;
+            'h') [[ $col -gt 1 ]] && col=$((col-1));;
+            'l') col=$((col+1));;
+            'g') row=1;;
+            'G') row=$lastln;;
+            '0') col=1;;
+            '$') col=$lastcol;;
+            '/') read -p "/" < /dev/tty regex;;
+        esac
+    done
+}
+#+end_src
+
+*** useless
+#+begin_src sh :tangle out/useless :tangle-mode (identity #o755)
+#!/bin/sh
+# USELESS: less but less code. Seriously, just use less.
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 30/10/2020
+# License: MIT License
+# 20 line pager. Not very useful in its current form but easily extended
+
+useless() {
+    lines="$(cat "$1" || cat /dev/stdin)"
+    numlines="$(echo "$lines" | wc -l)" && height="$(tput lines)" && \
+    echo -e "\e[?1049h" && row=1 && col=1 && regex="" || return 1
+    while true; do
+        echo "$lines" | sed -n "$row,$((row+height-2))p;$((row+height-2))q"\
+            | cut -c $col- | grep --colour=always "^\|$regex";
+        read -rsn1 -p ":" < /dev/tty char && echo -e "$(tput el1)\r"
+        case $char in
+            'q') echo -e "\e[?1049l" && return;;
+            'k') [[ $row -gt 1 ]] && row=$((row-1));;
+            'j') [[ $row -lt $numlines ]] && row=$((row+1));;
+            'h') [[ $col -gt 1 ]] && col=$((col-1));;
+            'l') col=$((col+1));;
+            'g') row=1;;
+            'G') row=$numlines;;
+            '/') read -p "/" < /dev/tty regex;;
+        esac
+    done
+}
+#+end_src
+
+** TODO permhist
+permanent history using bm
+** hist
+#+begin_src sh :tangle out/hist :tangle-mode (identity #o755)
+#!/bin/sh
+# HIST: Shell history made easy
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 06/11/2020
+# License: GPL v3
+
+[ $SHELL = "/bin/zsh" ] &&
+    histfile="$XDG_CONFIG_HOME/zsh/.zhistory" ||
+    histfile="$HOME/.history"
+
+sep="; "
+cmdlist="$1"
+
+if [ -z "$1" ]; then
+    cat --number "$histfile" | less
+    exit
+elif [ "$1" = '-a' ]; then
+    sep=" && "
+    cmdlist="$2"
+elif [[ "$1" =~ "-h|--help" ]]; then
+    echo "hist            list history"
+    echo "hist 50..55     run cmd list ; seperated"
+    echo "hist -a 50..55  run cmd list && seperated"
+    exit
+fi
+# 50..55
+if [[ $cmdlist =~ ^[0-9]+\.\.[0-9]+$ ]]; then
+    START="$(echo $cmdlist | sed 's/^\([0-9]*\)\.\.\([0-9]*\)$/\1/')"
+    END="$(echo $cmdlist | sed 's/^\([0-9]*\)\.\.\([0-9]*\)$/\2/')"
+    final=""
+    for i in $(eval echo "{$START..$END}"); do
+        cmd=$(cat --number $histfile | sed -n "s/^\s*${i}\t\(.*\)/\1/p")
+        [ -z "$final" ] && final="$cmd" || final="$final$sep$cmd"
+    done
+    echo "$final"
+    eval "$final"
+fi
+#+end_src
+
+** keyrepeat
+#+begin_src sh :tangle out/keyrepeat :tangle-mode (identity #o755)
+#!/bin/bash
+
+hideinput()
+{
+    if [ -t 0 ]; then
+        save_state=$(stty -g)
+        stty -echo -icanon time 0 min 0
+        echo -ne "\e[?1049h\r" 1>&2;
+    fi
+}
+
+cleanup()
+{
+    if [ -t 0 ]; then
+        stty "$save_state" < /dev/tty
+        echo -ne "\e[?1049l" 1>&2;
+        echo "$result"
+    fi
+}
+
+trap 'cleanup < /dev/tty' < /dev/tty EXIT
+trap 'hideinput < /dev/tty' CONT
+hideinput < /dev/tty
+
+while true
+do
+    read -r -sn1000 -t 0.001 junk < /dev/tty;
+    read -r -sn1 < /dev/tty;
+    read -r -sn3 -t 0.001 k1 < /dev/tty;
+    REPLY+=$k1;
+    case "$REPLY" in
+        '')
+            echo "Enter pressed"
+            ;;
+        $'\e[C'|$'\e0C') echo "Right arrow pressed";;
+        $'\e[D'|$'\e0D') echo "Left arrow pressed";;
+        $'\e[B'|$'\e0B') echo "Down arrow pressed";;
+        $'\e[A'|$'\e0A') echo "Up arrow pressed";;
+        $'\e[1~'|$'\e0H'|$'\e[H') echo "Home pressed";;
+        $'\e[4~'|$'\e0F'|$'\e[F') echo "End pressed";;
+        *)
+            char=$(echo "$REPLY" | hexdump -c | tr -d '[:space:]');
+            if [[ $char = "0000000033\n0000002" ]]; then
+                echo "Escape pressed"
+                exit;
+            elif [[ $char = "0000000177\n0000002" ]] && [[ ${#str} -gt 0 ]]; then
+                echo "Backspace pressed"
+            else
+                filtchar=$(echo "$REPLY" | hexdump -c | awk '{ print $2 }')
+                result="$filtchar"
+                if [[ "$filtchar" != "033" ]] && [[ "$filtchar" != "177" ]] && [[ ! "$REPLY"  =~ [^$valid] ]]; then
+                    echo "$REPLY pressed"
+                fi
+            fi
+            ;;
+    esac
+    sleep 0.1
+done
+#+end_src
+
+** mkexecdir
+#+begin_src bash :tangle out/mkexecdir :tangle-mode (identity #o755)
+#!/bin/bash
+# mkexecdir: Make all files in current directory which begin with a shebang executable
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Wed 17 Nov 2021 15:06:27 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+
+green=`tput setaf 2`
+reset=`tput sgr0`
+
+while IFS= read -r fname; do
+    head="$(head -n1 "$fname")"
+    if [[ $head =~ ^#! ]]; then
+        echo -e "$green$fname$reset:\t$head"
+        chmod +x "$fname"
+    fi
+done < <(ls -F | grep -v "/$") | column -ts $'\t'
+#+end_src
+
+** TODO lsf
+use fd if available
+find -maxdepth 1 -type f
+fd -d1 -tf
+** mkpath
+#+begin_src bash :tangle out/mkpath :tangle-mode (identity #o755)
+#!/bin/bash
+# mkpath: build a path variable using a dir and all sub dirs
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Wed 17 Nov 2021 16:32:14 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+
+find "$1" -type d | grep -v "\.git" | tr '\n' ':' | sed "s/:$//"
+#+end_src
+** n0s1
+#+begin_src sh :tangle out/n0s1 :tangle-mode (identity #o755)
+#!/bin/bash
+
+green=`tput setaf 2`
+red=`tput setaf 1`
+yellow=`tput setaf 3`
+blue=`tput setaf 4`
+magenta=`tput setaf 5`
+cyan=`tput setaf 6`
+white=`tput setaf 7`
+blink=`tput blink`
+reset=`tput sgr0`
+
+nan0S() {
+    echo '                    ___  ____  '
+    echo ' _ __   __ _ _ __  / _ \/ ___| '
+    echo '| `_ \ / _` | `_ \| | | \___ \ '
+    echo '| | | | (_| | | | | |_| |___) |'
+    echo '|_| |_|\__,_|_| |_|\___/|____/ '
+}
+
+n0s1_tiny() {
+    echo '    /\   /\   '
+    echo '   //\\ //\\  '
+    echo '  //  \V/  \\ '
+    echo ' //   /A\   \\ '
+    echo '//----/_\____\\'
+    echo '/-------------\'
+}
+
+n0s1() {
+    echo '       /\     /\        '
+    echo '      /  \   /  \       '
+    echo '     / /\ \ / /\ \      '
+    echo '    / /  \ X /  \ \     '
+    echo '   / /    X X    \ \    '
+    echo '  / /    / X \    \ \   '
+    echo ' / /    /_/_\_\    \ \  '
+    echo '/_/______/___\      \ \ '
+    echo ' /      /____________\_\'
+    echo '/_____________________\ '
+}
+
+n0s1_large() {
+    echo '              /\           /\                '
+    echo '             /  \         /  \               '
+    echo '            /    \       /    \              '
+    echo '           /      \     /      \             '
+    echo '          /   /\   \   /   /\   \            '
+    echo '         /   /  \   \ /   /  \   \           '
+    echo '        /   /    \   X   /    \   \          '
+    echo '       /   /      \ / \ /      \   \         '
+    echo '      /   /        X   X        \   \        '
+    echo '     /   /        / \ / \        \   \       '
+    echo '    /   /        /   X   \        \   \      '
+    echo '   /   /        /   / \   \        \   \     '
+    echo '  /   /        /___/___\___\        \   \    '
+    echo ' /   /            /     \            \   \   '
+    echo '/___/____________/_______\            \   \  '
+    echo '   /            /                      \   \ '
+    echo '  /            /________________________\___\'
+    echo ' /                                       \   '
+    echo '/_________________________________________\  '
+}
+
+usegreen=0
+centered=0
+large=0
+banner=0
+
+while getopts "gclb" OPT; do
+    if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
+      OPT="${OPTARG%%=*}"       # extract long option name
+      OPTARG="${OPTARG#$OPT}"   # extract long option argument (may be empty)
+      OPTARG="${OPTARG#=}"      # if long option argument, remove assigning `=`
+    fi
+    case "$OPT" in
+        g) usegreen=1 ;;
+        c) centered=1 ;;
+        l) large=1 ;;
+        b) banner=1 ;;
+        ??*) die "Illegal option --$OPT" ;;  # bad long option
+        ?) exit 2 ;;  # bad short option (error reported via getopts)
+  esac
+done
+shift $((OPTIND-1)) # remove parsed options and args from $@ list
+
+if [ $large = 1 ]; then
+    text="$(n0s1_large)"
+else
+    text="$(n0s1)"
+fi
+
+
+if [ $usegreen = 1 ]; then
+    text="${green}
+${text}
+${reset}"
+fi
+
+if [ $banner = 1 ]; then
+    text="${text}
+$(nan0S)"
+fi
+
+if [ $centered = 1 ]; then
+    echo "${text}" | center
+else
+    echo "${text}"
+fi
+#+end_src
+
+** TODO n0s1m
+#+begin_src sh :tangle out/n0s1m :tangle-mode (identity #o755)
+#!/bin/bash
+#n0s1m: n0s1 menu
+
+# Bish
+#+end_src
+
+** org_ingest
+#+begin_src sh :tangle out/org_ingest :tangle-mode (identity #o755)
+#!/bin/bash
+# Ingest a directory full of files to tangled script blocks in a org file.
+
+dir="$([ -z $1 ] && pwd || echo $1)"
+while IFS= read -r fname; do
+    echo "* $fname"
+    head="$(head -n1 "$fname")"
+    if [[ $head =~ ^#! ]]; then
+        echo "#+begin_src sh :tangle out/$fname :tangle-mode (identity #o755)"
+    else
+        echo "#+begin_src sh :tangle out/$fname"
+    fi
+    cat "$fname"
+    echo "#+end_src"
+    echo
+done < <(ls -p "$dir" | grep -v /)
+#+end_src
+
+** toomuxh
+#+begin_src sh :tangle out/toomuxh :tangle-mode (identity #o755)
+#!/bin/bash
+#AUTHOR: Nan0Scho1ar
+#License: GPL v3
+#Script for running nested tmux sessions
+#Calls recursively to add additional information
+
+case $1 in
+    sys)
+        toomuxh system $HOME/repos/me/dotfiles/tmux/sys.sh $2
+        ;;
+    local)
+        TMUX= ;
+        toomuxh $HOSTNAME $HOME/repos/me/dotfiles/tmux/local.sh $2
+        ;;
+    cluster)
+        TMUX= ;
+        toomuxh ${HOSTNAME}_C $HOME/repos/me/dotfiles/tmux/cluster.sh $2
+        ;;
+    *)
+        SESSION="$1"
+        CONFIG="$2"
+        case $3 in
+            q|quit|Q|QUIT|Quit|exit|Exit)
+                if tmux has-session -t $SESSION 2>/dev/null; then
+                    tmux kill-session -t $SESSION 2>/dev/null &&
+                        echo "Killed tmux session '$SESSION'" ||
+                        echo "Failed to kill tmux session '$SESSION'"
+                else
+                    echo "Tmux session '$SESSION' does not exist"
+                fi
+                exit
+                ;;
+            *)
+                echo "SESSION=$SESSION"
+                echo "CONFIG=$CONFIG"
+                if tmux has-session -t $SESSION 2>/dev/null; then
+                    tmux -2 attach-session -t $SESSION 2>/dev/null ||
+                    echo "Failed to attach tmux session '$SESSION'"
+                else
+                    tmux -2 new-session -s $SESSION $CONFIG
+                    tmux -2 new-session -d -s $SESSION $CONFIG
+                    tmux -2 attach-session -t $SESSION
+                fi
+                ;;
+        esac
+        ;;
+esac
+#+end_src
+
+** TOML
+*** readtoml
+#+begin_src sh :tangle out/readtoml :tangle-mode (identity #o755)
+#!/bin/bash
+# READ_TOML: One line script to read from a toml file
+# Author: Nan0Scho1ar
+# Created: 11/1/2021
+# License: MIT License
+# TODO support multiline values
+# TODO support dotted notation (dotted headers/parent already work)
+# TODO apologize to my future self or anyone who has to maintin this
+
+sed -n "s/#.*//g;$([[ $1 =~ \. ]] && echo "/^\s*\[`sed 's/\..*//' <<< $1`\]/" || echo 0),/\^\s*[.*\]/!d;s/^\s*\"*`sed 's/.*\.//' <<< $1`\"*\s*=\s*//p" <<< $(cat $2 || cat /dev/stdin)
+
+#Super Minimal version which doesn't strip comments before processing and can't handle malformed whitespace
+#cat $2 | sed -n "$([[ $1 =~ \. ]] && echo "/^\[`sed 's/\..*//' <<< $1`\]/" || echo 0),/\^[.*\]/!d;s/^\s*\"*`sed 's/.*\.//' <<< $1`\"*\s=\s//p"
+
+#Explainer
+#parent="$(sed 's/\..*//' <<< "$1")"
+#key="$(sed 's/.*\.\//' <<< "$1")"
+#begin="$([[ $1 =~ \. ]] && echo "/^\s*\[$parent\]/" || echo 0)"
+##Remove comments from file; Filter to section; Return value
+#sed -n "s/#.*//g;$begin,/^\s*\[.*\]/!d;s/^\s*\"*$key\"*\s*=\s*//p" <<< $(cat $2 || cat /dev/stdin)
+#+end_src
+
+*** test.toml
+#+begin_src text :tangle out/test.toml :tangle-mode (identity #o755)
+# This is a TOML document
+
+title = "TOML Example"
+"quoted" = "Quoted Example"
+
+[owner]
+name = "Tom Preston-Werner"
+dob = 1979-05-27T07:32:00-08:00
+
+[database]
+enabled = true
+ports = [ 8001, 8001, 8002 ]
+data = [ ["delta", "phi"], [3.14] ]
+temp_targets = { cpu = 79.5, case = 72.0 }
+
+[servers]
+
+[servers.alpha]
+ip = "10.0.0.1"
+role = "frontend"
+
+[servers.beta]
+ip = "10.0.0.2"
+role = "backend"
+#+end_src
+
+*** toml
+#+begin_src sh :tangle out/toml :tangle-mode (identity #o755)
+#!/bin/bash
+# TOML: Simple get commands to read toml files
+# (Not all featues supported)
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 27/10/2020
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+toml() {
+    flatten() {
+        comment_regex="^\s*#"
+        header_regex="\s*\[.*\]"
+        value_regex="\s*.*=.*"
+        extract_header="s/\[//g; s/\]//g; s/ //g; s/\t//g; s/\n//g"
+        extract_value="s/^\s*//; s/\t//g; s/\n//; s/ =/=/; s/= /=/"
+
+        parent=""
+        while IFS= read -r line; do
+            if [[ $line =~ $comment_regex ]]; then
+                continue
+            elif [[ $line =~ $header_regex ]]; then
+                parent=$(sed "$extract_header" <<< "$line")
+            elif [[ $line =~ $value_regex ]]; then
+                if [ -z $parent ]; then
+                    sed "$extract_value" <<< "$line"
+                else
+                    echo "$parent.$(sed "$extract_value" <<< "$line")"
+                fi
+            fi
+        done < /dev/stdin
+    }
+
+    #Returns the first value which matches the header
+    get_value() {
+        match="$1=.*"
+        while IFS= read -r line; do
+            if [[ $line =~ $match ]]; then
+                sed "s/^.*=//" <<< "$line" | tr -d '"'
+                break
+            fi
+        done < <(cat /dev/stdin | flatten)
+    }
+
+    # Returns all headers and values matching the input
+    get() {
+        match="^$1.*"
+        while IFS= read -r line; do
+            if [[ $line =~ $match ]]; then
+                echo "$line"
+            fi
+        done < <(cat /dev/stdin | flatten)
+    }
+
+    case "$1" in
+        "get") cat /dev/stdin | get "$2" ;;
+        "get_value") cat /dev/stdin | get_value "$2" ;;
+        "-V") echo "toml: version 0.7.1" ;;
+        *) echo "Error: Unknown option";;
+    esac
+}
+#+end_src
+
+*** toml.py
+#+begin_src python :tangle out/toml.py :tangle-mode (identity #o755)
+#!/usr/bin/env python3
+# toml.py: Read values from a toml file
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Fri 17 Sep 2021 14:48:03 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import sys
+import re
+
+def flatten(lines):
+    flat = []
+    for line in lines:
+        if re.match("^\s*#", line):
+            continue
+        elif re.match("\s*\[.*\]", line):
+            parent = line.replace("[", "").replace("]", "").replace(" ", "").replace("\t", "").replace("\n", "")
+        elif re.match("\s*.*=.*", line):
+            flat.append(parent + "." + re.sub("^\s*", "", line).replace("\t", "").replace("\n", "").replace(" =", "=").replace("= ", "="))
+    return flat
+
+# TODO support multiline arrays
+# Returns first match
+def get(key):
+    flat = flatten(sys.stdin)
+    for line in flat:
+        if key + "=" in line:
+            result = re.sub(".*=", "", line)
+            return result[1:-1] if re.match("^\".*\"$", result) else result
+
+def get_headers(key):
+    flat = flatten(sys.stdin)
+    matches = []
+    for line in flat:
+        if key == line[:len(key)]:
+            matches.append(line)
+    return matches
+
+
+if sys.argv[1] == "get":
+    print(get(sys.argv[2]))
+elif sys.argv[1] == "get_headers":
+    for match in get_headers(sys.argv[2]):
+        print(match)
+#+end_src
+
+** Sexec
+#+begin_src bash :tangle out/sexec :tangle-mode (identity #o755)
+#!/bin/bash
+# sexec: Source and execute a shell function from a file
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Wed 17 Nov 2021 18:24:40 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+source "$1"
+cmd="$1"
+shift
+$cmd $@
+#+end_src
+** Text and Input
+*** catenate
+#+begin_src sh :tangle out/catenate :tangle-mode (identity #o755)
+#!/bin/sh
+# CATENATE: Prepend/Append data to stdin
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 17/10/2020
+# License: MIT License
+
+catenate()  { cat <(echo -n "$1") - <(echo -n "$2"); }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || catenate $@
+#+end_src
+
+*** rd
+#+begin_src sh :tangle out/rd :tangle-mode (identity #o755)
+#!/bin/sh
+# RD: Read a character from the tty
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 9/12/2020
+# License: MIT License
+
+rd() {
+    IFS=
+    read -rsn1 mode # get 1 character
+    [[ $mode == $(printf "\u1b") ]] && read -rsn4 -t 0.001 mode2
+    char=$(echo -n "$mode$mode2" | sed 's/\[A//;s/\[B//;s/\[C//;s/\[D//;')
+    if [[ "$(echo -n $char | hexdump -c | tr -d '\n' | tr -d ' ')" == '00000000000001' ]]; then
+        str='space'
+    else
+        case "$char" in
+            [a-zA-Z0-9,._+:@%/-\#\$\^\&\*\(\)\=\{\}\|\\\;\'\"\<\>\~\`\[\]]) str=$char;;
+            '!') str='!';;
+            '?') str='?';;
+            *)
+                seq=$(echo -n "$mode$mode2" | hexdump -c | sed 's/^0+ \(.*\) \\n/\1/;s/ //g;s/^0*//;1q')
+                case $seq in
+                    '33') str='esc' ;;
+                    '33[A') str='up' ;;
+                    '33[B') str='down' ;;
+                    '33[C') str='right' ;;
+                    '33[D') str='left' ;;
+                    *)
+                        s=$(echo $seq | sed 's/\[A//;s/\[B//;s/\[C//;s/\[D//;')
+                        case $s in
+                            '') str='enter' ;;
+                            '1') str='^A' ;;
+                            '177') str='backspace' ;;
+                            *) str=$seq ;;
+                        esac
+                        ;;
+                esac
+                ;;
+        esac
+    fi
+    [[ -z $1 ]] && echo "$str" || eval "$1=\"$str\""
+}
+#+end_src
+
+*** rdln
+#+begin_src sh :tangle out/rdln :tangle-mode (identity #o755)
+#!/bin/sh
+# RDLN: Read a line from the tty
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 9/12/2020
+# License: MIT License
+
+rdln() {
+    str="";
+    while true; do
+        echo -n "> $str"
+        char=`rd`
+        echo -en "$(tput el1)\r"
+        case $char in
+            "enter") [[ -z $1 ]] && echo "$str" || eval "$1=\"$str\""; return;;
+            "backspace") [[ $(echo $str | wc -m) -gt 1 ]] && str="${str::-1}";;
+            *) str+=$char;;
+        esac
+    done
+}
+#+end_src
+
+*** tolower
+#+begin_src bash :tangle out/tolower :tangle-mode (identity #o755)
+#!/bin/bash
+# TOLOWER: Converts all chars in stdin to lowercase
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 8/12/2020
+# License: MIT License
+tolower() { sed 's/./\L&/g' /dev/stdin; }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tolower $@
+#+end_src
+
+*** toupper
+#+begin_src bash :tangle out/toupper :tangle-mode (identity #o755)
+#!/bin/bash
+# TOUPPER: Converts all chars in stdin to uppercase
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 8/12/2020
+# License: MIT License
+toupper() { sed 's/./\U&/g' /dev/stdin; }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || toupper $@
+#+end_src
+
+*** trapinput
+#+begin_src sh :tangle out/trapinput :tangle-mode (identity #o755)
+#!/bin/bash
+
+hideinput()
+{
+  if [ -t 0 ]; then
+     echo "Is tty"
+     save_state=$(stty -g)
+     stty -echo -icanon time 0 min 0
+     echo -ne "\e[?1049h\r" 1>&2;
+  else
+    echo "is not tty"
+  fi
+}
+
+cleanup()
+{
+  if [ -t 0 ]; then
+    stty "$save_state"
+    echo -ne "\e[?1049l" 1>&2;
+    echo "exit tty"
+  else
+    echo "is not tty"
+  fi
+}
+
+trap 'cleanup < /dev/tty' EXIT
+trap 'hideinput < /dev/tty' CONT
+hideinput
+
+input="$(< /dev/stdin)";
+echo "$input"
+while true;
+do
+  read -r -sn1 < /dev/tty;
+  read -r -sn3 -t 0.001 k1 < /dev/tty;
+  REPLY+=$k1;
+  echo $REPLY
+done
+#+end_src
+
+*** waitanykey
+#+begin_src bash :tangle out/waitanykey :tangle-mode (identity #o755)
+#!/bin/bash
+# wait_any_key: Waits for the user to press any key
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:28:22 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+wait_any_key() { read -n 1 -s -r -p "Press any key to continue"; }
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || wait_any_key $@
+#+end_src
+
+*** transpose
+#+begin_src sh :tangle out/transpose :tangle-mode (identity #o755)
+#!/bin/sh
+# TRANSPOSE: Swap columns and rows separated by spaces
+# Author: https://stackoverflow.com/users/459745/hai-vu
+# Question: https://stackoverflow.com/questions/9534744/how-to-transfer-the-data-of-columns-to-rows-with-awk
+# Created: 9/12/2020
+# License: MIT License
+awk '{ for (i=1; i<=NF; i++) col[i] = col[i] " " $i }
+END {
+    for (i=1; i<=NF; i++) {
+        sub(/^ /, "", col[i]);
+        print col[i]
+    }
+}' $1
+#+end_src
+
+* Setup
+** setup
+#+begin_src sh :tangle out/setup :tangle-mode (identity #o755)
+#!/bin/bash
+# Script to init arch/ubuntu/windows_10 systems to nanOS
+#{{{ Colours
+# Add colour vars
+if [ -t 1 ] && command -v tput > /dev/null; then
+    # see if it supports colors
+    ncolors=$(tput colors)
+    if [ -n "$ncolors" ] && [ $ncolors -ge 8 ]; then
+        bold="$(tput bold       || echo)"
+        blink="$(tput blink     || echo)"
+        reset="$(tput sgr0      || echo)"
+        black="$(tput setaf 0   || echo)"
+        red="$(tput setaf 1     || echo)"
+        green="$(tput setaf 2   || echo)"
+        yellow="$(tput setaf 3  || echo)"
+        blue="$(tput setaf 4    || echo)"
+        magenta="$(tput setaf 5 || echo)"
+        cyan="$(tput setaf 6    || echo)"
+        white="$(tput setaf 7   || echo)"
+    fi
+fi
+#}}}
+#{{{ trypacmaninstall()
+#}}}
+#{{{ tryaurinstall()
+#}}}
+#{{{ tryaptinstall()
+#}}}
+#{{{ wait_any_key()
+#}}}
+#{{{ ask()
+#}}}
+#{{{ asklink()
+#}}}
+#{{{ askrecursivelinkdir()
+
+#}}}
+#{{{ asklinksudo()
+#}}}
+#{{{ askclone()
+#}}}
+#{{{ setup_ssh()
+#}}}
+#{{{ detect_os()
+#Detect OS
+#}}}
+#{{{ arch_pkg_setup()
+#}}}
+#{{{ ubuntu_pkg_setup()
+#}}}
+#{{{ vim_setup()
+#}}}
+#{{{ tmux_setup()
+#}}}
+#{{{ setup_symlinks()
+#}}}
+#{{{ setup_repos()
+#}}}
+#{{{ setup_git()
+#}}}
+# BEGIN
+detect_os
+cd $HOME
+if [ "$1" = "--configure" ]; then
+    setup_symlinks
+    exit
+elif [ "$1" = "--repos" ]; then
+    clone_repos
+    exit
+fi
+# Setup ssh
+echo ${blue}SSH Keys${reset}
+ask "Setup ssh" && setup_ssh
+echo ${blue}Git repos${reset}
+ask "Clone repos" && setup_repos
+echo ${blue}System Packages${reset}
+# Update system
+if ask "Upgrade packages"; then
+    case $NANOS_DISTRO in
+        Arch) sudo pacman -Syu && yay -Syu ;;
+        Ubuntu) sudo apt update && sudo apt upgrade ;;
+        Windows) echo "TODO Windows" ;;
+    esac
+fi
+# Install packages
+if ask "Install packages"; then
+    case $NANOS_DISTRO in
+        Arch) arch_pkg_setup ;;
+        Ubuntu) ubuntu_pkg_setup ;;
+        Windows) echo "TODO Windows" ;;
+    esac
+fi
+echo ${blue}Link files${reset}
+setup_symlinks
+echo ${blue}Vim plugins${reset}
+vim_setup
+echo ${blue}Tmux plugins${reset}
+tmux_setup
+#echo ${blue}Git settings${reset}
+#setup_git
+#doom emacs
+#+end_src
+
+** vim_setup
+#+begin_src sh :tangle out/vim_setup :tangle-mode (identity #o755)
+#!/bin/bash
+# vim_setup: Install vimplug and plugins
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:40:42 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+vim_setup() {
+    #Setup vim/nvim
+    if [ -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ] && [ -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
+        echo "${green}vimplug already installed${reset}"
+    elif ask "Install vim/nvim plugins"; then
+        if [ $NANOS_NAME = "linux" ]; then
+            if [ ! -f "$XDG_DATA_HOME/vim/autoload/plug.vim" ]; then
+                echo "$XDG_DATA_HOME/vim/autoload/plug.vim not found. Downloading..."
+                curl -fLo $HOME/.vim/autoload/plug.vim --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+                vim -E -s +PlugInstall +visual +qall
+            fi
+
+
+            if [ ! -f "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" ]; then
+                echo "$HOME/.config/nvim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
+                curl -fLo "$XDG_DATA_HOME/nvim/site/autoload/plug.vim" --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+            fi
+
+            if [ ! -f "$XDG_DATA_HOME/n0s1vim/site/autoload/plug.vim" ]; then
+                echo "$HOME/.config/n0s1vim/site/autoload/plug.vim not found. Copying from $HOME/.vim/autoload/plug.vim"
+                curl -fLo "$XDG_DATA_HOME/n0s1vim/site/autoload/plug.vim" --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+            fi
+        fi
+    fi
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || vim_setup $@
+#+end_src
+
+** tryaptinstall
+#+begin_src sh :tangle out/tryaptinstall :tangle-mode (identity #o755)
+#!/bin/bash
+# tryaptinstall: Prompt the user to install packages using apt
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:27:28 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+tryaptinstall() {
+    dpkg-query -W -f='${Status}' $1 2>/dev/null | grep -q "install ok installed" && echo "${green}$1${reset} is already installed" && return
+    ask "${magenta}$1${reset} is not installed, would you like to install it" && sudo apt-get --yes install $1
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tryaptinstall $@
+#+end_src
+
+** tryaurinstall
+#+begin_src sh :tangle out/tryaurinstall :tangle-mode (identity #o755)
+#!/bin/bash
+# tryaurinstall: Prompt the user to install list of packages using AUR helper
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:25:57 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+tryaurinstall() {
+    pkgs=`echo $@ | sed "s/--prompt //"`
+    for pkg in $pkgs; do
+        pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
+        #Idk if this check works properly
+        pacman -Qg "$pkg@" 1>/dev/null 2>/dev/null && echo "${gree}$pkg${reset} is already installed" && continue
+        if [[ $1 == "--prompt" ]]; then
+            ask "install $pkg" || continue
+        fi
+        echo "${red}Installing $pkg${reset}" && yay -S $pkg;
+    done
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tryaurinstall $@
+#+end_src
+
+** trylink
+#+begin_src sh :tangle out/trylink :tangle-mode (identity #o755)
+#!/bin/bash
+# trylink: Tries to create a symlink
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:32:19 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+trylink() {
+    if [ "$(diff -q "$1" "$2")" != "" ]; then
+        ask "${magenta}$2${reset} already exists and is not identical. Show diff" &&
+            diff "$1" "$2"
+        ask "Remove ${red}$2${reset}" && rm "$2"
+    else
+        rm "$2"
+    fi
+    echo "Linking ${magenta}$2${reset}"
+    ln -sf "$1" "$2"
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || trylink $@
+#+end_src
+
+** trypacmaninstall
+#+begin_src sh :tangle out/trypacmaninstall :tangle-mode (identity #o755)
+#!/bin/bash
+# trypacmaninstall:  Prompts the user to install packages in the list
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 18:36:30 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+trypacmaninstall() {
+    pkgs=`echo $@ | sed "s/--prompt //"`
+    for pkg in $pkgs; do
+        pacman -Qi $pkg 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
+        #Idk if this check works properly
+        pacman -Qg  "$pkg@" 1>/dev/null 2>/dev/null && echo "${green}$pkg${reset} is already installed" && continue
+        if [[ $1 == "--prompt" ]]; then
+            ask "install $pkg" || continue
+        fi
+        echo "${red}Installing $pkg${reset}" && sudo pacman -S --noconfirm $pkg;
+    done
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || trypacmaninstall $@
+#+end_src
+
+** ubuntu_pkg_setup
+#+begin_src sh :tangle out/ubuntu_pkg_setup :tangle-mode (identity #o755)
+#!/bin/bash
+# ubuntu_pkg_setup: Script to install ubuntu packages
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:39:47 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+ubuntu_pkg_setup() {
+    tryaptinstall ripgrep
+    tryaptinstall fzf
+    tryaptinstall keychain
+    tryaptinstall tmux
+    tryaptinstall curl
+    tryaptinstall youtube-dl
+    tryaptinstall vim
+    tryaptinstall neovim
+    tryaptinstall nodejs
+    tryaptinstall zsh
+
+    tryaptinstall fd-find
+    #fd is already used on Ubuntu
+    if dpkg-query -W -f='${Status}' fd-find 2> /dev/null | grep -q "install ok installed"; then
+        asklink "fdfind (ubuntu fix)" "$(which fdfind)" "$HOME/.local/bin/fd"
+    fi
+    #Bat is not in standard repos because reasons
+    if dpkg-query -W -f='${Status}' bat 2> /dev/null | grep -q "install ok installed"; then
+        echo "${green}bat${reset} is already installed"
+    elif ask "'${magenta}bat${reset}' is not installed, would you like to install it"; then
+        cur_dir=$(pwd)
+        cd /tmp
+        wget https://github.com/sharkdp/bat/releases/download/v0.17.1/bat_0.17.1_amd64.deb
+        sudo dpkg -i bat_0.17.1_amd64.deb
+        cd $cur_dir
+    fi
+    ###TODO Install Rider
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || ubuntu_pkg_setup $@
+#+end_src
+
+** setup_git
+#+begin_src sh :tangle out/setup_git :tangle-mode (identity #o755)
+#!/bin/bash
+# setup_git: setup git settings
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 20:28:25 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+setup_git() {
+    ##Git settings
+    if [ "$(git config --get pull.rebase)" = false ] &&
+       [ "$(git config --get user.email)" = "scorch267@gmail.com" ] &&
+       [ "$(git config --get user.name)" = "nan0scho1ar" ] &&
+       [ "$(git config --get core.editor)" = "vim" ]; then
+        echo "${green}Git${reset} configured correctly"
+    elif ask "Update git settings"; then
+        git config --global pull.rebase false
+        git config --global user.email "scorch267@gmail.com"
+        git config --global user.name "nan0scho1ar"
+        git config --global core.editor "vim"
+    fi
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_git $@
+#+end_src
+
+** setup_repos
+#+begin_src sh :tangle out/setup_repos :tangle-mode (identity #o755)
+#!/bin/bash
+# setup_repos: sets up repos for a system
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 20:23:47 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+setup_repos() {
+    mkdir -p "$NANOS_REPOS_DIR"
+    cd $NANOS_REPOS_DIR
+    askclone "dotfiles" "git@bitbucket.org:Nan0Scho1ar/dotfiles.git"
+    askclone "scripts" "git@bitbucket.org:Nan0Scho1ar/scripts.git"
+    askclone "vimwiki" "git@bitbucket.org:Nan0Scho1ar/vimwiki.git"
+    askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
+    askclone "bish" "git@github.com:Nan0Scho1ar/bish"
+    askclone "gitmanager" "git@github.com:Nan0Scho1ar/gitmanager"
+    askclone "n0s1.core" "git@github.com:Nan0Scho1ar/n0s1.core.git"
+    cd $HOME
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_repos $@
+#+end_src
+
+** setup_ssh
+#+begin_src sh :tangle out/setup_ssh :tangle-mode (identity #o755)
+#!/bin/bash
+# setup_ssh: Propmts user to create new ssh keys if none exist
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:36:17 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+setup_ssh() {
+    if [ -d .ssh ]; then
+        echo ".ssh directory already exits, continuing...";
+    else
+        echo "Creating .ssh directory";
+        mkdir .ssh
+    fi
+    if [ -f .ssh/id_rsa.pub ]; then
+        echo "ssh key already exists";
+        echo "Using existing key";
+    else
+        echo "Generating ssh key..."
+        ssh-keygen
+    fi
+    ask "add public key to remotes" && cat .ssh/id_rsa.pub && echo "Add ssh key to bitbucket and github before continuing." \
+        && sh brave "https://bitbucket.org/account/settings/ssh-keys/" "https://github.com/settings/keys"
+    wait_any_key
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_ssh $@
+#+end_src
+
+** setup_symlinks
+#+begin_src sh :tangle out/setup_symlinks :tangle-mode (identity #o755)
+#!/bin/bash
+# setup_symlinks: Sets up symlinks for a system
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 20:21:31 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+setup_symlinks() {
+    #asklinksudo "/etc/update-motd.d/10-help-text" "/home/nan0scho1ar/dotfiles/linux/99-banner" "/etc/update-motd.d/99-banner"
+    asklink ".bashrc" "$NANOS_REPOS_DIR/dotfiles/.bashrc" "$HOME/.bashrc"
+    asklink ".xinitrc" "$NANOS_REPOS_DIR/dotfiles/.xinitrc" "$HOME/.xinitrc"
+    asklink ".profile" "$NANOS_REPOS_DIR/dotfiles/.profile" "$HOME/.profile"
+    asklink ".vimrc" "$NANOS_REPOS_DIR/dotfiles/.vimrc" "$HOME/.vimrc"
+    asklink ".xprofile" "$NANOS_REPOS_DIR/dotfiles/.xprofile" "$HOME/.xprofile"
+    asklink ".zshenv" "$NANOS_REPOS_DIR/dotfiles/.zshenv" "$HOME/.zshenv"
+    asklink ".tmux.conf" "$NANOS_REPOS_DIR/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
+    asklinkrecursive ".config" "$NANOS_REPOS_DIR/dotfiles/.config" "$HOME/.config"
+    asklinkrecursive ".doom.d" "$NANOS_REPOS_DIR/dotfiles/.doom.d" "$HOME/.doom.d"
+    asklinksudo "/etc/hosts" "$NANOS_REPOS_DIR/dotfiles/linux/hosts" "/etc/hosts"
+    asklinksudo "/etc/thinkfan.conf" "$NANOS_REPOS_DIR/dotfiles/etc/thinkfan.conf" "/etc/thinkfan.conf"
+    asklinksudo "awesome/rc.lua" "$NANOS_REPOS_DIR/dotfiles/etc/xdg/awesome/rc.lua" "/etc/xdg/awesome/rc.lua"
+    mkdir -p $HOME/.config/z/
+    source $HOME/.profile
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || setup_symlinks $@
+#+end_src
+
+** tmux_setup
+#+begin_src sh :tangle out/tmux_setup :tangle-mode (identity #o755)
+#!/bin/bash
+# tmux_setup: Installs tmux plugin manager
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:41:50 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+tmux_setup() {
+    if [ -d "$HOME/.tmux/plugins" ];then
+        echo "tmux plugin manager (tpm) already installed"
+    elif ask "Install tmux plugin manager"; then
+        mkdir -p $HOME/.tmux/plugins/
+        git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+    fi
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || tmux_setup $@
+#+end_src
+
+** findpkg
+#+begin_src sh :tangle out/findpkg :tangle-mode (identity #o755)
+#!/bin/sh
+# FINDPKG: Attempts to find a package using available package managers
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 17/10/2020
+# License: MIT License
+
+findpkg() {
+    local found_pkg_mgr=false
+    if command -v pacman >/dev/null 2>&1; then
+        found_pkg_mgr=true
+        echo -e "`tput setaf 2`Searching using pacman ($(command -v pacman))`tput sgr0`"
+        sudo pacman -Sy && pacman -Ss $@ && return
+        echo "`tput setaf 3`Could not find package using pacman`tput sgr0`"
+    else
+        echo "`tput setaf 3`Could not find pacman`tput sgr0`"
+    fi
+
+    if command -v yay >/dev/null 2>&1; then
+        found_pkg_mgr=true
+        echo -e "`tput setaf 2`Searching using yay ($(command -v yay))`tput sgr0`"
+        yay -Sy && local list=$(yay -Ss $@)
+        [[ $list != '' ]] && echo "$list" && return
+        echo `tput setaf 3`"Could not find package using yay`tput sgr0`"
+    else
+        echo `tput setaf 3`"Could not find yay`tput sgr0`"
+    fi
+
+    if $found_pkg_mgr; then
+        echo "`tput setaf 1`Could not find package using available package managers`tput sgr0`"
+    else
+        echo "`tput setaf 1`Could not find any valid package managers`tput sgr0`"
+    fi
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || findpkg $@
+#+end_src
+
+** detect_os
+#+begin_src sh :tangle out/detect_os :tangle-mode (identity #o755)
+#!/bin/bash
+# detect_os: Attempts to detect the current operating system
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:37:08 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+detect_os() {
+    os=$(uname | tr '[:upper:]' '[:lower:]')
+    case $os in
+      linux|linux*)
+        export NANOS_NAME=linux
+        distros=$(cat /etc/*-release | sed -n "s/DISTRIB_ID=\(.*\)/\1/p")
+        case $distros in
+            ManjaroLinux) NANOS_DISTRO="Arch" ;;
+            Ubuntu) NANOS_DISTRO="Ubuntu" ;;
+            *)
+                if pacman --help >/dev/null 2>&1; then
+                    NANOS_DISTRO="Arch"
+                elif command -v termux-setup-storage > /dev/null 2>&1; then
+                    NAN0S_DISTRO="Termux"
+                else
+                    echo "Unrecognized linux distro, please update startup script"
+                    exit
+                fi
+                ;;
+        esac
+        NANOS_REPOS_DIR="$HOME/repos/me"
+        ;;
+      darwin*)
+        export NANOS_NAME=osx
+        ;;
+      msys*|MINGW64_NT-10.0*)
+        export NANOS_NAME=windows
+        NANOS_DISTRO="Windows"
+        NANOS_REPOS_DIR="$HOME/repos/me"
+        ;;
+      *)
+        echo "Unrecognized OS {$os}, please update startup script"
+        exit
+        ;;
+    esac
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || detect_os $@
+#+end_src
+
+** askclone
+#+begin_src sh :tangle out/askclone :tangle-mode (identity #o755)
+#!/bin/bash
+# askclone: promts the user to clone a git repository
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:35:26 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+askclone() {
+    if [ -d $1 ]; then
+        echo "Directory $1 already exists, skipping..."
+    elif ask "Clone ${1}"; then
+        echo "Cloning $1"
+        git clone --recurse-submodules $2
+    fi
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || askclone $@
+#+end_src
+
+** asklink
+#+begin_src sh :tangle out/asklink :tangle-mode (identity #o755)
+#!/bin/bash
+# asklink: prompts the user to create symlink if not already created
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:30:32 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+asklink() {
+    echo "$1"
+    echo "$2"
+    echo "$3"
+    if [ "$(readlink -- $3)" = "$2" ]; then
+        echo "${green}$1${reset} already linked correctly"
+    elif ask "Link ${magenta}${1}${reset}"; then
+        #Create dir if not exist
+        mkdir -p "$(dirname "${3}")"
+        trylink "$2" "$3"
+    fi
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || asklink $@
+#+end_src
+
+** asklinkrecursive
+#+begin_src sh :tangle out/asklinkrecursive :tangle-mode (identity #o755)
+#!/bin/bash
+# asklinkrecursive: Creates symlinks for all nested dirs
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:33:23 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+#This is not actually recursive lol
+asklinkrecursive() {
+    for f in $(find "$2" -type f | sed "s|$2/*||"); do
+        if [ "$(readlink -- $3/$f)" != "$2/$f" ]; then
+            if ask "Recursively Link $1"; then
+                #Create dir if not exist
+                mkdir -p "$3"
+                for dir in $(find "$2" -type d | sed "s|$2||"); do
+                    if [ ! -d "$3/$dir" ]; then
+                        echo "Creating directory $3/$dir"
+                        #Create child dirs if not exist
+                        mkdir -p "$3/$dir"
+                    fi
+                done
+                for file in $(find "$2" -type f | sed "s|$2/*||"); do
+                    if [ "$(readlink -- $3/$file)" = "$2/$file" ]; then
+                        echo "${green}$1${reset} already linked correctly"
+                        continue
+                    elif [ ! -z "$3/$file" ]; then
+                        trylink "$2/$file" "$3/$file"
+                    else
+                        echo "File does not exist"
+                    fi
+                done
+            fi
+	        return
+	    fi
+    done
+    echo "${green}$1${reset} already linked correctly"
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || asklinkrecursive $@
+#+end_src
+
+** asklinksudo
+#+begin_src sh :tangle out/asklinksudo :tangle-mode (identity #o755)
+#!/bin/bash
+# asklinksudo: prompts user to create a symlink which requires sudo
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:34:34 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+asklinksudo() {
+    if [ "$(readlink -- $3)" = $2 ]; then
+        echo "${green}$1${reset} already linked correctly"
+    elif ask "Link ${magenta}$1${reset}"; then
+        #Create dir if not exist
+        mkdir -p "$(dirname "${3}")"
+        if [ -f "$3" ]; then
+            ask "${red}$1${reset} already exists. Remove it?" && sudo rm "$3"
+        fi
+        sudo ln -sf "$2" "$3"
+    fi
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || asklinksudo $@
+#+end_src
+
+** arch_pkg_setup
+#+begin_src sh :tangle out/arch_pkg_setup :tangle-mode (identity #o755)
+#!/bin/bash
+# arch_pkg_setup: Sets up packages on an arch system
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:38:38 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+arch_pkg_setup() {
+    sudo pacman -Sy
+    ### Pacman
+     #trypacmaninstall --prompt
+    trypacmaninstall \
+    alacritty aspell aspell-en base-devel bat bluez bluez-utils \
+    brave-browser bspwm cmake dmenu elixir emacs entr fd flameshot fzf gimp \
+    github-cli inkscape julia keychain languagetool mpv neovim net-tools \
+    nextcloud-client nitrogen nodejs peek polybar python-black python-isort \
+    python-neovim python-pipenv python-pyflakes python-pytest python-rednose \
+    racket ripgrep sbcl screenkey shellcheck stylelint sxhkd synergy tidy \
+    tmux ttf-jetbrains-mono unzip vim xclip xdotool xorg-xprop xorg-xwininfo \
+    xournalpp xsel yarn yay youtube-dl youtube-viewer zathura zathura-pdf-poppler \
+
+    if ask "Install doom emacs"; then
+        git clone --depth 1 https://github.com/hlissner/doom-emacs ~/.emacs.d
+        ~/.emacs.d/bin/doom install
+    fi
+    ### AUR
+    if ask "Askinstall extra"; then
+        yay -Sy
+        tryaurinstall --prompt minecraft-launcher
+        tryaurinstall --prompt pandoc
+        tryaurinstall --prompt texlive-most
+        tryaurinstall --prompt postman
+        tryaurinstall --prompt rider
+        tryaurinstall --prompt js-beautify
+        tryaurinstall --prompt clj-kondo-bin
+     fi
+     if ask "Install rust toolchain"; then
+        trypacmaninstall rustup rust-racer
+        sudo rustup install stable
+        sudo rustup default stable
+        sudo rustup component add rls rust-analysis rust-src
+    fi
+    if [ -d $NANOS_REPOS_DIR/neovim ] && ask "Install nvim from source"; then
+        cd $NANOS_REPOS_DIR &&
+        sudo rm -r neovim &&
+        git clone https://github.com/neovim/neovim &&
+        cd neovim &&
+        sudo make CMAKE_BUILD_TYPE=Release install &&
+        cd $NANOS_REPOS_DIR
+    fi
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || arch_pkg_setup $@
+#+end_src
+
+** arch_vm_setup
+#+begin_src sh :tangle out/arch_vm_setup :tangle-mode (identity #o755)
+#!/bin/sh
+### Basic Arch VM install script
+
+read -p "Enter the hostname: " MYHOSTNAME
+timedatectl set-ntp true
+echo -e "g\nn\n\n\n+300M\nt\n1\nn\n\n\n+4G\nt\n2\n19\nn\n\n\n\np\nw\n" | fdisk /dev/vda
+mkfs.ext4 /dev/vda3
+mkswap /dev/vda2
+mount /dev/vda3 /mnt
+mkdir /mnt/boot
+mount /dev/vda1 /mnt/boot
+swapon /dev/vda2
+pacstrap /mnt base linux linux-firmware vi
+genfstab -U /mnt >> /mnt/etc/fstab
+cat << EOF | arch-chroot /mnt
+ln -sf /usr/share/zoneinfo/Australia/Brisbane /etc/localtime
+hwclock --systohc
+sed -i "s/#\(en_US.UTF-8 UTF-8\)/\1/;s/#\(en_AU.UTF-8 UTF-8\)/\1/" /etc/locale.gen
+locale-gen
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
+echo "$MYHOSTNAME" > /etc/hostname
+echo -e "127.0.0.1   localhost\n::1     localhost\n127.0.1.1   $MYHOSTNAME.localdomain  $MYHOSTNAME" >> /etc/hosts
+pacman -Sy --noconfirm grub
+grub-install --target=i386-pc /dev/vda
+grub-mkconfig -o /boot/grub/grub.cfg
+EOF
+echo "Run passwd to set root password then exit and reboot"
+arch-chroot /mnt#+end_src
+
+* README.md (NOT BEING TANGLED)
+# n0s1.core
+
+### Several suckless shell scripts and other core features.
+
+## Shell
+
+### FZY: Command Line Fuzzy Finder
+([link](fzy))
+
+I found myself using fzf a lot and building it into my scripts.
+But on a number of occasions I was working on machines which didn't have it installed.
+This covers many of my use cases (Like fuzzy menus) in < 20 lines of shell script.
+
+#### FZY_Lite: 10 SLOC Command Line Fuzzy Finder
+([link](fzy_lite))
+I have also included FZY_Lite which is basically the same logic but squished into 10 SLOC
+(And smaller comment) for embedding inside scripts.
+
+### TOML: Simple get/set commands to read and write toml files
+([link](toml))
+POSIX Compliant shell script for reading from + writing to TOML files.
+
+### BISH
+([link](bish))
+Floating shell used for loading scripts and managing the system configuration.
+Built to allow easy customization supporting bioinformatics workloads,
+but generally just a good tool for extending your shell.
+
+### BM: Bookmarks
+([link](bm))
+Bookmarks for everything.
+
+### CHECK_ROOT: Throws an error if the current user is not root
+([link](check_root))
+Checks if the current user is root.
+
+### DISCORD_WEBHOOKS: Tool for managing and messaging using discord webhooks
+([link](discordwebhooks))
+Manage webhooks to post as multiple users, for multiple channels in your servers.
+
+### HIST: Shell history made easy
+([link](hist))
+Tool for working with shell history.
+
+### USELESS: less but less code. Seriously, just use less.
+([link](useless))
+Less but written in 20 lines of shell script.
+Not designed to be used as is, more a foundation for other CLI tools
+
+### HACKLESS: The hackable less
+([link](hackless))
+More extensible version of useless.
+
+### SETUP
+([link](setup))
+Script to set up parts of NanOS

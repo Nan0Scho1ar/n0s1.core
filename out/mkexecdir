@@ -1,0 +1,17 @@
+#!/bin/bash
+# mkexecdir: Make all files in current directory which begin with a shebang executable
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Wed 17 Nov 2021 15:06:27 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+
+green=`tput setaf 2`
+reset=`tput sgr0`
+
+while IFS= read -r fname; do
+    head="$(head -n1 "$fname")"
+    if [[ $head =~ ^#! ]]; then
+        echo -e "$green$fname$reset:\t$head"
+        chmod +x "$fname"
+    fi
+done < <(ls -F | grep -v "/$") | column -ts $'\t'

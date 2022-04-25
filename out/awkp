@@ -1,0 +1,11 @@
+#!/bin/sh
+#AWKP: awk print colums
+#Author: Nan0Scho1ar (Christopher Mackinga)
+#License: GPLv3
+#Description: simplify printing specifig colums using awk
+
+if [[ $# -eq 0 ]]; then
+    column -t
+else
+    awk "{print $(echo "\$$@" | sed 's/ /"\t"$/g')}" | column -t
+fi

@@ -1,0 +1,56 @@
+#!/bin/bash
+# detect_os: Attempts to detect the current operating system
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:37:08 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+detect_os() {
+    os=$(uname | tr '[:upper:]' '[:lower:]')
+    case $os in
+      linux|linux*)
+        export NANOS_NAME=linux
+        distros=$(cat /etc/*-release | sed -n "s/DISTRIB_ID=\(.*\)/\1/p")
+        case $distros in
+            ManjaroLinux) NANOS_DISTRO="Arch" ;;
+            Ubuntu) NANOS_DISTRO="Ubuntu" ;;
+            *)
+                if pacman --help >/dev/null 2>&1; then
+                    NANOS_DISTRO="Arch"
+                elif command -v termux-setup-storage > /dev/null 2>&1; then
+                    NAN0S_DISTRO="Termux"
+                else
+                    echo "Unrecognized linux distro, please update startup script"
+                    exit
+                fi
+                ;;
+        esac
+        NANOS_REPOS_DIR="$HOME/repos/me"
+        ;;
+      darwin*)
+        export NANOS_NAME=osx
+        ;;
+      msys*|MINGW64_NT-10.0*)
+        export NANOS_NAME=windows
+        NANOS_DISTRO="Windows"
+        NANOS_REPOS_DIR="$HOME/repos/me"
+        ;;
+      *)
+        echo "Unrecognized OS {$os}, please update startup script"
+        exit
+        ;;
+    esac
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || detect_os $@

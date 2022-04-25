@@ -1,0 +1,101 @@
+#!/bin/bash
+# Script to init arch/ubuntu/windows_10 systems to nanOS
+#{{{ Colours
+# Add colour vars
+if [ -t 1 ] && command -v tput > /dev/null; then
+    # see if it supports colors
+    ncolors=$(tput colors)
+    if [ -n "$ncolors" ] && [ $ncolors -ge 8 ]; then
+        bold="$(tput bold       || echo)"
+        blink="$(tput blink     || echo)"
+        reset="$(tput sgr0      || echo)"
+        black="$(tput setaf 0   || echo)"
+        red="$(tput setaf 1     || echo)"
+        green="$(tput setaf 2   || echo)"
+        yellow="$(tput setaf 3  || echo)"
+        blue="$(tput setaf 4    || echo)"
+        magenta="$(tput setaf 5 || echo)"
+        cyan="$(tput setaf 6    || echo)"
+        white="$(tput setaf 7   || echo)"
+    fi
+fi
+#}}}
+#{{{ trypacmaninstall()
+#}}}
+#{{{ tryaurinstall()
+#}}}
+#{{{ tryaptinstall()
+#}}}
+#{{{ wait_any_key()
+#}}}
+#{{{ ask()
+#}}}
+#{{{ asklink()
+#}}}
+#{{{ askrecursivelinkdir()
+
+#}}}
+#{{{ asklinksudo()
+#}}}
+#{{{ askclone()
+#}}}
+#{{{ setup_ssh()
+#}}}
+#{{{ detect_os()
+#Detect OS
+#}}}
+#{{{ arch_pkg_setup()
+#}}}
+#{{{ ubuntu_pkg_setup()
+#}}}
+#{{{ vim_setup()
+#}}}
+#{{{ tmux_setup()
+#}}}
+#{{{ setup_symlinks()
+#}}}
+#{{{ setup_repos()
+#}}}
+#{{{ setup_git()
+#}}}
+# BEGIN
+detect_os
+cd $HOME
+if [ "$1" = "--configure" ]; then
+    setup_symlinks
+    exit
+elif [ "$1" = "--repos" ]; then
+    clone_repos
+    exit
+fi
+# Setup ssh
+echo ${blue}SSH Keys${reset}
+ask "Setup ssh" && setup_ssh
+echo ${blue}Git repos${reset}
+ask "Clone repos" && setup_repos
+echo ${blue}System Packages${reset}
+# Update system
+if ask "Upgrade packages"; then
+    case $NANOS_DISTRO in
+        Arch) sudo pacman -Syu && yay -Syu ;;
+        Ubuntu) sudo apt update && sudo apt upgrade ;;
+        Windows) echo "TODO Windows" ;;
+    esac
+fi
+# Install packages
+if ask "Install packages"; then
+    case $NANOS_DISTRO in
+        Arch) arch_pkg_setup ;;
+        Ubuntu) ubuntu_pkg_setup ;;
+        Windows) echo "TODO Windows" ;;
+    esac
+fi
+echo ${blue}Link files${reset}
+setup_symlinks
+echo ${blue}Vim plugins${reset}
+vim_setup
+echo ${blue}Tmux plugins${reset}
+tmux_setup
+#echo ${blue}Git settings${reset}
+#setup_git
+#doom emacs

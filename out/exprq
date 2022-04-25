@@ -1,0 +1,8 @@
+#!/bin/bash
+# exprx: syntactic sugar for expr to test if regex matches
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Fri 17 Sep 2021 14:48:03 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+
+exprq() { expr "$1" : "$2" 1>/dev/null; }

@@ -1,0 +1,16 @@
+#!/bin/bash
+# ask: Promts the user to answer a yes/no question.
+# Returns after a single char is entered without hitting return.
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:29:17 AEST
+# License: GPL v3
+
+ask() {
+    while true; do
+    read -p "${1} ${yellow}y/n${reset} " -sn1
+        echo
+        [[ $REPLY =~ ^[Yy]$ ]] && return 0
+        [[ $REPLY =~ ^[Nn]$ ]] && return 1
+    done
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || ask $@

@@ -1,0 +1,65 @@
+#!/bin/bash
+# arch_pkg_setup: Sets up packages on an arch system
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: Tue 26 Oct 2021 19:38:38 AEST
+# License: GPL v3
+# Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+arch_pkg_setup() {
+    sudo pacman -Sy
+    ### Pacman
+     #trypacmaninstall --prompt
+    trypacmaninstall \
+    alacritty aspell aspell-en base-devel bat bluez bluez-utils \
+    brave-browser bspwm cmake dmenu elixir emacs entr fd flameshot fzf gimp \
+    github-cli inkscape julia keychain languagetool mpv neovim net-tools \
+    nextcloud-client nitrogen nodejs peek polybar python-black python-isort \
+    python-neovim python-pipenv python-pyflakes python-pytest python-rednose \
+    racket ripgrep sbcl screenkey shellcheck stylelint sxhkd synergy tidy \
+    tmux ttf-jetbrains-mono unzip vim xclip xdotool xorg-xprop xorg-xwininfo \
+    xournalpp xsel yarn yay youtube-dl youtube-viewer zathura zathura-pdf-poppler \
+
+    if ask "Install doom emacs"; then
+        git clone --depth 1 https://github.com/hlissner/doom-emacs ~/.emacs.d
+        ~/.emacs.d/bin/doom install
+    fi
+    ### AUR
+    if ask "Askinstall extra"; then
+        yay -Sy
+        tryaurinstall --prompt minecraft-launcher
+        tryaurinstall --prompt pandoc
+        tryaurinstall --prompt texlive-most
+        tryaurinstall --prompt postman
+        tryaurinstall --prompt rider
+        tryaurinstall --prompt js-beautify
+        tryaurinstall --prompt clj-kondo-bin
+     fi
+     if ask "Install rust toolchain"; then
+        trypacmaninstall rustup rust-racer
+        sudo rustup install stable
+        sudo rustup default stable
+        sudo rustup component add rls rust-analysis rust-src
+    fi
+    if [ -d $NANOS_REPOS_DIR/neovim ] && ask "Install nvim from source"; then
+        cd $NANOS_REPOS_DIR &&
+        sudo rm -r neovim &&
+        git clone https://github.com/neovim/neovim &&
+        cd neovim &&
+        sudo make CMAKE_BUILD_TYPE=Release install &&
+        cd $NANOS_REPOS_DIR
+    fi
+}
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || arch_pkg_setup $@

@@ -1,0 +1,27 @@
+#!/bin/sh
+# BM: Bookmarks
+# Author: Nan0Scho1ar (Christopher Mackinga)
+# Created: 17/10/2020
+# License: GPL v3
+
+add() { read -p "Enter key: " key; read -p "Enter value: " val; echo "$key~|~$val" >> $1; }
+
+delete() {
+    if [ -z $2 ]; then
+        sed -i $(cat -n $1 | fzy | sed "s/\(\s*[0-9]*\).*/\1dq/") $1
+    else
+        idx=$(grep -n "$1~|~.*" $2 | head -n1 | sed "s/^\([0-9]*\):.*/\1/")
+        sed -i "${idx}d" $2
+    fi
+}
+get() { sed -n "s/^$1~|~\(.*\)/\1/p" $2 | head -n1; }
+readval() { cat "$1" | fzy | sed "s/.*~|~//"; }
+
+mkdir -p ~/.config/bookmarks/;
+if [ -z $1 ]; then readval $(ls $HOME/.config/bookmarks/*.bm | fzy);
+elif [ "$1" = "add" ]; then add "$HOME/.config/bookmarks/$2.bm";
+elif [ "$1" = "rm" ]; then delete "$2" "$HOME/.config/bookmarks/$3.bm";
+elif [ "$1" = "get" ]; then get "$2" "$HOME/.config/bookmarks/$3.bm";
+elif [ "$1" = "list" ]; then cat "$HOME/.config/bookmarks/$2.bm" | sed "s/~|~/\t/" | column -ts $'\t';
+else readval "$HOME/.config/bookmarks/$1.bm";
+fi
