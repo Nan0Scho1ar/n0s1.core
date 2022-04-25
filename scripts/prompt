@@ -1,6 +1,0 @@
-#!/bin/sh
-#Promts the user to answer a yes/no question.
-#Returns after a single char is entered without hitting return.
-read -p "${1} ${yellow}y/n${reset} " -n 1 -r
-echo
-[[ $REPLY =~ ^[Yy]$ ]] && exit 0 || exit 1
