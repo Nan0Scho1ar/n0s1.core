@@ -10,7 +10,7 @@ mount /dev/sda3 /mnt
 swapon /dev/sda2
 pacstrap /mnt base linux linux-firmware vi
 genfstab -U /mnt >> /mnt/etc/fstab
-cat << EOF |  arch-chroot /mnt
+cat << EOF | arch-chroot /mnt
 ln -sf /usr/share/zoneinfo/Australia/Brisbane /etc/localtime
 hwclock --systohc
 sed -i "s/#\(en_US.UTF-8 UTF-8\)/\1/;s/#\(en_AU.UTF-8 UTF-8\)/\1/" /etc/locale.gen
