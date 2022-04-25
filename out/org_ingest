@@ -6,9 +6,9 @@ while IFS= read -r fname; do
     echo "* $fname"
     head="$(head -n1 "$fname")"
     if [[ $head =~ ^#! ]]; then
-        echo "#+begin_src sh :tangle $fname :tangle-mode (identity #o755)"
+        echo "#+begin_src sh :tangle out/$fname :tangle-mode (identity #o755)"
     else
-        echo "#+begin_src sh :tangle $fname"
+        echo "#+begin_src sh :tangle out/$fname"
     fi
     cat "$fname"
     echo "#+end_src"
