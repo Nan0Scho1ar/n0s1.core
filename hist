@@ -2,7 +2,7 @@
 # HIST: Shell history made easy
 # Author: Nan0Scho1ar (Christopher Mackinga)
 # Created: 06/11/2020
-# License: MIT License
+# License: GPL v3
 
 [ $SHELL = "/bin/zsh" ] &&
     histfile="$XDG_CONFIG_HOME/zsh/.zhistory" ||

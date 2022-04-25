@@ -2,7 +2,7 @@
 # FZY: Command Line Fuzzy Finder
 # Created: 29/10/2020
 # Author: Nan0Scho1ar (Christopher Mackinga)
-# License: MIT License
+# License: GPL v3
 
 hideinput() { [ -t 0 ] && save_state=$(stty -g) && stty -echo -icanon time 0 min 0 && echo -ne "\e[?1049h\r" 1>&2; }
 cleanup() { [ -t 0 ] && stty "$save_state" < /dev/tty && echo -ne "\e[?1049l" 1>&2 && echo "$result"; }
