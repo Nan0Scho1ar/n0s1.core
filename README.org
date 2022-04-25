@@ -916,18 +916,6 @@ role = "backend"
 # Created: 27/10/2020
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 toml() {
     flatten() {
@@ -991,18 +979,6 @@ toml() {
 # Created: Fri 17 Sep 2021 14:48:03 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
 import re
@@ -1051,18 +1027,7 @@ elif sys.argv[1] == "get_headers":
 # Created: Wed 17 Nov 2021 18:24:40 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
+
 source "$1"
 cmd="$1"
 shift
@@ -1221,18 +1186,6 @@ done
 # Created: Tue 26 Oct 2021 19:28:22 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 wait_any_key() { read -n 1 -s -r -p "Press any key to continue"; }
@@ -1370,18 +1323,6 @@ tmux_setup
 # Created: Tue 26 Oct 2021 19:40:42 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 vim_setup() {
@@ -1423,18 +1364,6 @@ vim_setup() {
 # Created: Tue 26 Oct 2021 19:27:28 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 tryaptinstall() {
@@ -1452,18 +1381,6 @@ tryaptinstall() {
 # Created: Tue 26 Oct 2021 19:25:57 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 tryaurinstall() {
@@ -1489,18 +1406,6 @@ tryaurinstall() {
 # Created: Tue 26 Oct 2021 19:32:19 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 trylink() {
@@ -1525,18 +1430,7 @@ trylink() {
 # Created: Tue 26 Oct 2021 18:36:30 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
+
 trypacmaninstall() {
     pkgs=`echo $@ | sed "s/--prompt //"`
     for pkg in $pkgs; do
@@ -1560,18 +1454,6 @@ trypacmaninstall() {
 # Created: Tue 26 Oct 2021 19:39:47 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 ubuntu_pkg_setup() {
@@ -1614,18 +1496,6 @@ ubuntu_pkg_setup() {
 # Created: Tue 26 Oct 2021 20:28:25 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 setup_git() {
@@ -1653,18 +1523,6 @@ setup_git() {
 # Created: Tue 26 Oct 2021 20:23:47 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 setup_repos() {
@@ -1690,18 +1548,6 @@ setup_repos() {
 # Created: Tue 26 Oct 2021 19:36:17 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 setup_ssh() {
     if [ -d .ssh ]; then
@@ -1732,18 +1578,6 @@ setup_ssh() {
 # Created: Tue 26 Oct 2021 20:21:31 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 setup_symlinks() {
@@ -1774,18 +1608,6 @@ setup_symlinks() {
 # Created: Tue 26 Oct 2021 19:41:50 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 tmux_setup() {
     if [ -d "$HOME/.tmux/plugins" ];then
@@ -1844,18 +1666,6 @@ findpkg() {
 # Created: Tue 26 Oct 2021 19:37:08 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 detect_os() {
     os=$(uname | tr '[:upper:]' '[:lower:]')
@@ -1904,19 +1714,6 @@ detect_os() {
 # Created: Tue 26 Oct 2021 19:35:26 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
-
 
 askclone() {
     if [ -d $1 ]; then
@@ -1937,18 +1734,6 @@ askclone() {
 # Created: Tue 26 Oct 2021 19:30:32 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 asklink() {
@@ -1974,18 +1759,6 @@ asklink() {
 # Created: Tue 26 Oct 2021 19:33:23 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #This is not actually recursive lol
@@ -2029,18 +1802,6 @@ asklinkrecursive() {
 # Created: Tue 26 Oct 2021 19:34:34 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 asklinksudo() {
@@ -2066,18 +1827,6 @@ asklinksudo() {
 # Created: Tue 26 Oct 2021 19:38:38 AEST
 # License: GPL v3
 # Copyright (C) 2021 Christopher Mackinga <chris@n0s1.net>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 arch_pkg_setup() {
