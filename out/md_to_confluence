@@ -1,0 +1,13 @@
+#!/bin/sh
+md_to_confluence() {
+    FILE="$1"
+    # Delete anchors
+    sed -i '/<a id="org.*">/d' "$FILE"
+    # Fix links
+    sed -i 's/\(.*\)\[\(.*\)\](#org.*)/\1[\2](#\2)/' "$FILE"
+    for i in $(seq 100); do
+        sed -i 's/\(.*\[.*](.*\) \(.*\)/\1-\2/g' "$FILE"
+    done
+    # Fix underscores
+    sed -i 's/<sub>/_/g;s/<\/sub>//g' "$FILE"
+}
