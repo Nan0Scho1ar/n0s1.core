@@ -17,7 +17,10 @@ delete() {
 get() { sed -n "s/^$1~|~\(.*\)/\1/p" $2 | head -n1; }
 readval() { cat "$1" | fzy | sed "s/.*~|~//"; }
 
-mkdir -p ~/.config/bookmarks/;
+if [ ! -f "$HOME/.config/bookmarks/" ]; then
+    mkdir -p "$HOME/.config";
+    mkdir -p "$HOME/.config/bookmarks/";
+fi
 if [ -z $1 ]; then readval $(ls $HOME/.config/bookmarks/*.bm | fzy);
 elif [ "$1" = "add" ]; then add "$HOME/.config/bookmarks/$2.bm";
 elif [ "$1" = "rm" ]; then delete "$2" "$HOME/.config/bookmarks/$3.bm";

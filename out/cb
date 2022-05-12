@@ -6,6 +6,12 @@
 
 cb() {
     #TODO Prompt for missing args
+
+    if [ ! -f "$HOME/.config/bookmarks/dirs.bm" ]; then
+        mkdir -p "$HOME/.config";
+        mkdir -p "$HOME/.config/bookmarks/";
+        touch "$HOME/.config/bookmarks/dirs.bm";
+    fi
     [ -z $1 ] && bm list dirs
     case "$1" in
         add) echo -e "$2\n$(pwd)" | bm add dirs;;

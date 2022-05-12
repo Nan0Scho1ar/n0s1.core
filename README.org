@@ -101,6 +101,41 @@ if __name__ == '__main__':
 #+end_src
 
 * Scripts
+#+begin_src bash
+# Try to append domain name to an ip in the hosts file.
+# Does not append if it's already bound.
+
+hosts_append_missing() {
+    IP="$1"
+    HOSTNAMES="$2"
+    HOSTS_FILE="/etc/hosts"
+
+    echo -e "Trying to bind the following domains to $IP\n\n$HOSTNAMES\n"
+
+    # Print nice output
+    for HNAME in $LOCAL_HOSTNAMES; do
+        if grep -q "^$IP.*$HNAME" $HOSTS_FILE; then
+            echo -e "$HNAME,is already bound to $IP"
+        else
+            echo -e "$HNAME,is not bound to $IP"
+        fi
+    done | column -t -s,
+
+    APPEND_LIST=$(
+        for HNAME in $LOCAL_HOSTNAMES; do
+            grep -q "^$IP.*$HNAME" $HOSTS_FILE || printf " %s" "$HNAME"
+        done
+    )
+
+    if [ -z "$APPEND_LIST" ]; then
+        echo -e "\nAll domains already bound."
+    else
+        echo -e "\nBinding the following hostnames to $IP\n$APPEND_LIST\n"
+
+        sudo sed -i "s/^\($IP.*\)/\1$APPEND_LIST/" $HOSTS_FILE
+    fi
+}
+#+end_src
 ** Bookmarks
 *** bm
 #+begin_src sh :tangle out/bm :tangle-mode (identity #o755)
@@ -123,7 +158,10 @@ delete() {
 get() { sed -n "s/^$1~|~\(.*\)/\1/p" $2 | head -n1; }
 readval() { cat "$1" | fzy | sed "s/.*~|~//"; }
 
-mkdir -p ~/.config/bookmarks/;
+if [ ! -f "$HOME/.config/bookmarks/" ]; then
+    mkdir -p "$HOME/.config";
+    mkdir -p "$HOME/.config/bookmarks/";
+fi
 if [ -z $1 ]; then readval $(ls $HOME/.config/bookmarks/*.bm | fzy);
 elif [ "$1" = "add" ]; then add "$HOME/.config/bookmarks/$2.bm";
 elif [ "$1" = "rm" ]; then delete "$2" "$HOME/.config/bookmarks/$3.bm";
@@ -143,13 +181,19 @@ fi
 
 cb() {
     #TODO Prompt for missing args
+
+    if [ ! -f "$HOME/.config/bookmarks/dirs.bm" ]; then
+        mkdir -p "$HOME/.config";
+        mkdir -p "$HOME/.config/bookmarks/";
+        touch "$HOME/.config/bookmarks/dirs.bm";
+    fi
     [ -z $1 ] && bm list dirs
     case "$1" in
         add) echo -e "$2\n$(pwd)" | bm add dirs;;
         rm) bm rm "$2" dirs;;
         list) bm list dirs;;
         reload) source "$NREPOS/n0s1.core/cb";;
-        *) cd $(bm get "$1" dirs);;
+        ,*) cd $(bm get "$1" dirs);;
     esac
 }
 #+end_src
@@ -231,6 +275,23 @@ cyan=`tput setaf 6`
 white=`tput setaf 7`
 blink=`tput blink`
 reset=`tput sgr0`
+#+end_src
+
+** md_to_confluence
+#+begin_src sh :tangle out/md_to_confluence :tangle-mode (identity #o755)
+#!/bin/sh
+md_to_confluence() {
+    FILE="$1"
+    # Delete anchors
+    sed -i '/<a id="org.*">/d' "$FILE"
+    # Fix links
+    sed -i 's/\(.*\)\[\(.*\)\](#org.*)/\1[\2](#\2)/' "$FILE"
+    for i in $(seq 100); do
+        sed -i 's/\(.*\[.*](.*\) \(.*\)/\1-\2/g' "$FILE"
+    done
+    # Fix underscores
+    sed -i 's/<sub>/_/g;s/<\/sub>//g' "$FILE"
+}
 #+end_src
 
 ** discordwebhooks
