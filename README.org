@@ -191,7 +191,7 @@ cb() {
     case "$1" in
         add) echo -e "$2\n$(pwd)" | bm add dirs;;
         rm) bm rm "$2" dirs;;
-        list) bm list dirs;;
+        ls) bm list dirs;;
         reload) source "$NREPOS/n0s1.core/cb";;
         ,*) cd $(bm get "$1" dirs);;
     esac
