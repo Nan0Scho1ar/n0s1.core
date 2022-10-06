@@ -218,6 +218,28 @@ ef() {
 }
 #+end_src
 
+** fzf-bat-preview
+#+begin_src sh :tangle out/fzf-bat-preview :tangle-mode (identity #o755)
+#!/usr/bin/env bash
+
+set -eEuCo pipefail
+
+declare -r file=$1
+declare -i -r line=$2
+declare -i -r lines=$LINES
+
+# subtract 3 for the header
+declare -i center=$(( (lines - 3) / 2 ))
+
+if [ $line -lt $center ]; then
+    center=$line
+fi
+declare -i -r start=$(( line - center ))
+declare -i -r end=$(( lines + start ))
+
+exec bat --color always --highlight-line $line --line-range $start:$end --paging never "$file"
+#+end_src
+
 ** ask
 #+begin_src sh :tangle out/ask :tangle-mode (identity #o755)
 #!/bin/bash
