@@ -905,7 +905,6 @@ case $1 in
                     tmux -2 attach-session -t $SESSION 2>/dev/null ||
                     echo "Failed to attach tmux session '$SESSION'"
                 else
-                    tmux -2 new-session -s $SESSION $CONFIG
                     tmux -2 new-session -d -s $SESSION $CONFIG
                     tmux -2 attach-session -t $SESSION
                 fi
