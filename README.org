@@ -2239,6 +2239,22 @@ echo "Run passwd to set root password then exit and reboot"
 arch-chroot /mnt
 #+end_src
 
+
+** reverse_array
+#+begin_src sh :tangle out/reverse_array :tangle-mode (identity #o755)
+#!/bin/bash
+### Reverse a bash array
+
+reverse_array() {
+    # first argument is the array to reverse
+    # second is the output array
+    declare -n arr="$1" rev="$2"
+    for i in "${arr[@]}"
+    do
+        rev=("$i" "${rev[@]}")
+    done
+}
+#+end_src
 * README.md (NOT BEING TANGLED)
 # n0s1.core
 
