@@ -3,14 +3,22 @@
 # Author: Nan0Scho1ar (Christopher Mackinga)
 # Created: 21/01/2021
 # License: MIT License
-# Requires flask, pygments, markdown
 
-import sys
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "flask",
+#     "pygments",
+#     "markdown",
+# ]
+# ///
+#
+# Quickrun with uv run app.py
 import os
 import markdown
 import markdown.extensions.fenced_code
 import markdown.extensions.codehilite
-from flask import Flask, request, make_response, render_template, abort
+from flask import Flask, request, make_response, abort
 from pygments.formatters import HtmlFormatter
 
 PLAIN_TEXT_AGENTS = [ "curl", "httpie", "lwp-request", "wget", "python-requests", "openbsd ftp", "powershell", "fetch" ]
@@ -25,14 +33,14 @@ def to_html(lines):
 
 def get_file_path(path, is_man):
     if is_man:
-        if path == None:
+        if path is None:
             return "./man/README.md"
         elif os.path.isfile("./man/" + path):
             return "./man/" + path
         elif os.path.isfile("./man/" + path + ".md"):
             return "./man/" + path + ".md"
     else:
-        if path == None:
+        if path is None:
             return INDEX_PATH
         elif os.path.isfile("./" + path):
             return "./" + path
@@ -41,7 +49,7 @@ def get_file_path(path, is_man):
     return None
 
 def try_get_lines(file_path):
-    if file_path == None:
+    if file_path is None:
         return ""
     with open(file_path) as f:
         lines = f.read()
@@ -52,8 +60,8 @@ def get_content(path, request, is_man, is_raw):
     lines = try_get_lines(file_path)
     user_agent = request.headers.get('User-Agent', '').lower()
     if any([x in user_agent for x in PLAIN_TEXT_AGENTS]):
-        return "Error: file not found" if file_path == None else lines
-    if file_path == None:
+        return "Error: file not found" if file_path is None else lines
+    if file_path is None:
         abort(404)
     if is_raw:
         resp = make_response(lines)
