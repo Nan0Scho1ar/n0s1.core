@@ -16,14 +16,22 @@ if __name__ == "__main__":
 # Author: Nan0Scho1ar (Christopher Mackinga)
 # Created: 21/01/2021
 # License: MIT License
-# Requires flask, pygments, markdown
 
-import sys
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "flask",
+#     "pygments",
+#     "markdown",
+# ]
+# ///
+#
+# Quickrun with uv run app.py
 import os
 import markdown
 import markdown.extensions.fenced_code
 import markdown.extensions.codehilite
-from flask import Flask, request, make_response, render_template, abort
+from flask import Flask, request, make_response, abort
 from pygments.formatters import HtmlFormatter
 
 PLAIN_TEXT_AGENTS = [ "curl", "httpie", "lwp-request", "wget", "python-requests", "openbsd ftp", "powershell", "fetch" ]
